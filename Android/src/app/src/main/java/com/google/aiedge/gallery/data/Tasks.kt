@@ -1,0 +1,111 @@
+/*
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.aiedge.gallery.data
+
+import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ImageSearch
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.google.aiedge.gallery.R
+
+/** Type of task. */
+enum class TaskType(val label: String) {
+  TEXT_CLASSIFICATION("Text Classification"),
+  IMAGE_CLASSIFICATION("Image Classification"),
+  IMAGE_GENERATION("Image Generation"),
+  LLM_CHAT("LLM Chat"),
+
+  TEST_TASK_1("Test task 1"),
+  TEST_TASK_2("Test task 2")
+}
+
+/** Data class for a task listed in home screen. */
+data class Task(
+  /** Type of the task. */
+  val type: TaskType,
+
+  /** Icon to be shown in the task tile. */
+  val icon: ImageVector? = null,
+
+  /** Vector resource id for the icon. This precedes the icon if both are set. */
+  val iconVectorResourceId: Int? = null,
+
+  /** List of models for the task. */
+  val models: MutableList<Model>,
+
+  /** Description of the task. */
+  val description: String,
+
+  /** Placeholder text for the name of the agent shown above chat messages. */
+  @StringRes val agentNameRes: Int = R.string.chat_generic_agent_name,
+
+  /** Placeholder text for the text input field. */
+  @StringRes val textInputPlaceHolderRes: Int = R.string.chat_textinput_placeholder,
+
+  // The following fields are managed by the app. Don't need to set manually.
+  var index: Int = -1
+)
+
+val TASK_TEXT_CLASSIFICATION = Task(
+  type = TaskType.TEXT_CLASSIFICATION,
+  iconVectorResourceId = R.drawable.text_spark,
+  models = MODELS_TEXT_CLASSIFICATION,
+  description = "Classify text into different categories",
+  textInputPlaceHolderRes = R.string.text_input_placeholder_text_classification
+)
+
+val TASK_IMAGE_CLASSIFICATION = Task(
+  type = TaskType.IMAGE_CLASSIFICATION,
+  icon = Icons.Rounded.ImageSearch,
+  description = "Classify images into different categories",
+  models = MODELS_IMAGE_CLASSIFICATION
+)
+
+val TASK_LLM_CHAT = Task(
+  type = TaskType.LLM_CHAT,
+  iconVectorResourceId = R.drawable.chat_spark,
+  models = MODELS_LLM_CHAT,
+  description = "Chat? with a on-device large language model",
+  textInputPlaceHolderRes = R.string.text_input_placeholder_llm_chat
+)
+
+val TASK_IMAGE_GENERATION = Task(
+  type = TaskType.IMAGE_GENERATION,
+  iconVectorResourceId = R.drawable.image_spark,
+  models = MODELS_IMAGE_GENERATION,
+  description = "Generate images from text",
+  textInputPlaceHolderRes = R.string.text_image_generation_text_field_placeholder
+)
+
+/** All tasks. */
+val TASKS: List<Task> = listOf(
+  TASK_TEXT_CLASSIFICATION,
+  TASK_IMAGE_CLASSIFICATION,
+  TASK_IMAGE_GENERATION,
+  TASK_LLM_CHAT,
+)
+
+fun getModelByName(name: String): Model? {
+  for (task in TASKS) {
+    for (model in task.models) {
+      if (model.name == name) {
+        return model
+      }
+    }
+  }
+  return null
+}

@@ -17,7 +17,6 @@
 package com.google.aiedge.gallery.ui.llmchat
 
 import androidx.lifecycle.viewModelScope
-import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.TASK_LLM_CHAT
 import com.google.aiedge.gallery.ui.common.chat.ChatMessageBenchmarkLlmResult
@@ -56,11 +55,31 @@ class LlmChatViewModel : ChatViewModel(task = TASK_LLM_CHAT) {
       }
 
       // Run inference.
+      val instance = model.instance as LlmModelInstance
+      val prefillTokens = instance.session.sizeInTokens(input)
+
+      var firstRun = true
+      var timeToFirstToken = 0f
+      var firstTokenTs = 0L
+      var decodeTokens = 0
+      var prefillSpeed = 0f
+      var decodeSpeed: Float
       val start = System.currentTimeMillis()
       LlmChatModelHelper.runInference(
         model = model,
         input = input,
         resultListener = { partialResult, done ->
+          val curTs = System.currentTimeMillis()
+
+          if (firstRun) {
+            firstTokenTs = System.currentTimeMillis()
+            timeToFirstToken = (firstTokenTs - start) / 1000f
+            prefillSpeed = prefillTokens / timeToFirstToken
+            firstRun = false
+          } else {
+            decodeTokens++
+          }
+
           // Remove the last message if it is a "loading" message.
           // This will only be done once.
           val lastMessage = getLastMessage(model = model)
@@ -76,7 +95,7 @@ class LlmChatViewModel : ChatViewModel(task = TASK_LLM_CHAT) {
 
           // Incrementally update the streamed partial results.
           val latencyMs: Long = if (done) System.currentTimeMillis() - start else -1
-          updateLastMessageContentIncrementally(
+          updateLastTextMessageContentIncrementally(
             model = model,
             partialContent = partialResult,
             latencyMs = latencyMs.toFloat()
@@ -84,6 +103,29 @@ class LlmChatViewModel : ChatViewModel(task = TASK_LLM_CHAT) {
 
           if (done) {
             setInProgress(false)
+
+            decodeSpeed =
+              decodeTokens / ((curTs - firstTokenTs) / 1000f)
+            if (decodeSpeed.isNaN()) {
+              decodeSpeed = 0f
+            }
+
+            if (lastMessage is ChatMessageText) {
+              updateLastTextMessageLlmBenchmarkResult(
+                model = model, llmBenchmarkResult =
+                ChatMessageBenchmarkLlmResult(
+                  orderedStats = STATS,
+                  statValues = mutableMapOf(
+                    "prefill_speed" to prefillSpeed,
+                    "decode_speed" to decodeSpeed,
+                    "time_to_first_token" to timeToFirstToken,
+                    "latency" to (curTs - start).toFloat() / 1000f,
+                  ),
+                  running = false,
+                  latencyMs = -1f,
+                )
+              )
+            }
           }
         }, cleanUpListener = {
           setInProgress(false)
@@ -117,8 +159,8 @@ class LlmChatViewModel : ChatViewModel(task = TASK_LLM_CHAT) {
       while (model.instance == null) {
         delay(100)
       }
-      val instance = model.instance as LlmInference
-      val prefillTokens = instance.sizeInTokens(message.content)
+      val instance = model.instance as LlmModelInstance
+      val prefillTokens = instance.session.sizeInTokens(message.content)
 
       // Add the message to show benchmark results.
       val benchmarkLlmResult = ChatMessageBenchmarkLlmResult(

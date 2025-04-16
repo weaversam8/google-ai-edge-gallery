@@ -17,7 +17,7 @@
 package com.google.aiedge.gallery.ui.home
 
 import androidx.compose.runtime.Composable
-import com.google.aiedge.gallery.VERSION
+import com.google.aiedge.gallery.BuildConfig
 import com.google.aiedge.gallery.data.Config
 import com.google.aiedge.gallery.data.ConfigKey
 import com.google.aiedge.gallery.data.SegmentedButtonConfig
@@ -45,7 +45,7 @@ fun SettingsDialog(
   )
   ConfigDialog(
     title = "Settings",
-    subtitle = "App version: $VERSION",
+    subtitle = "App version: ${BuildConfig.VERSION_NAME}",
     okBtnLabel = "OK",
     configs = CONFIGS,
     initialValues = initialValues,

@@ -21,9 +21,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,9 +28,7 @@ import com.google.aiedge.gallery.GalleryTopAppBar
 import com.google.aiedge.gallery.data.AppBarAction
 import com.google.aiedge.gallery.data.AppBarActionType
 import com.google.aiedge.gallery.data.Model
-import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.data.Task
-import com.google.aiedge.gallery.data.getModelByName
 import com.google.aiedge.gallery.ui.preview.PreviewModelManagerViewModel
 import com.google.aiedge.gallery.ui.preview.TASK_TEST1
 import com.google.aiedge.gallery.ui.theme.GalleryTheme
@@ -48,9 +43,6 @@ fun ModelManager(
   onModelClicked: (Model) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val uiState by viewModel.uiState.collectAsState()
-  val coroutineScope = rememberCoroutineScope()
-
   // Set title based on the task.
   var title = "${task.type.label} model"
   if (task.models.size != 1) {
@@ -67,27 +59,7 @@ fun ModelManager(
     topBar = {
       GalleryTopAppBar(
         title = title,
-//        subtitle = String.format(
-//          stringResource(R.string.downloaded_size),
-//          totalSizeInBytes.humanReadableSize()
-//        ),
-
-        // Refresh model list button at the left side of the app bar.
-//        leftAction = AppBarAction(actionType = if (uiState.loadingHfModels) {
-//          AppBarActionType.REFRESHING_MODELS
-//        } else {
-//          AppBarActionType.REFRESH_MODELS
-//        }, actionFn = {
-//          coroutineScope.launch(Dispatchers.IO) {
-//            viewModel.loadHfModels()
-//          }
-//        }),
         leftAction = AppBarAction(actionType = AppBarActionType.NAVIGATE_UP, actionFn = navigateUp)
-
-        // "Done" button at the right side of the app bar to navigate up.
-//        rightAction = AppBarAction(
-//          actionType = AppBarActionType.NAVIGATE_UP, actionFn = navigateUp
-//        ),
       )
     },
   ) { innerPadding ->
@@ -100,19 +72,6 @@ fun ModelManager(
     )
   }
 }
-
-private fun getTotalDownloadedFileSize(uiState: ModelManagerUiState): Long {
-  var totalSizeInBytes = 0L
-  for ((name, status) in uiState.modelDownloadStatus.entries) {
-    if (status.status == ModelDownloadStatusType.SUCCEEDED) {
-      totalSizeInBytes += getModelByName(name)?.totalBytes ?: 0L
-    } else if (status.status == ModelDownloadStatusType.IN_PROGRESS) {
-      totalSizeInBytes += status.receivedBytes
-    }
-  }
-  return totalSizeInBytes
-}
-
 
 @Preview
 @Composable

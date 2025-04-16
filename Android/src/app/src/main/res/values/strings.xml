@@ -35,7 +35,7 @@
     <string name="model_is_initializing_msg">Initializing model…</string>
     <string name="text_input_placeholder_text_classification">Type movie review to classify…</string>
     <string name="text_image_generation_text_field_placeholder">Type prompt…</string>
-    <string name="text_input_placeholder_llm_chat">Type prompt (one shot)…</string>
+    <string name="text_input_placeholder_llm_chat">Type prompt…</string>
     <string name="run_again">Run again</string>
     <string name="benchmark">Run benchmark</string>
     <string name="warming_up">warming up…</string>

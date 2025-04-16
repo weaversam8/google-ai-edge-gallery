@@ -38,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.UnfoldLess
 import androidx.compose.material.icons.rounded.UnfoldMore
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -90,6 +91,7 @@ private val DEFAULT_VERTICAL_PADDING = 16.dp
  * model description and buttons for learning more (opening a URL) and downloading/trying
  * the model.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModelItem(
   model: Model,
@@ -217,7 +219,7 @@ fun ModelItem(
             .then(m),
           horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-          // The "learn more" button. Click to show url in default browser.
+          // The "learn more" button. Click to show related urls in a bottom sheet.
           if (model.learnMoreUrl.isNotEmpty()) {
             OutlinedButton(
               onClick = {
@@ -241,35 +243,6 @@ fun ModelItem(
             modelManagerViewModel = modelManagerViewModel,
             onClicked = { onModelClicked(model) }
           )
-//          Button(
-//            onClick = {
-//              if (isExpanded) {
-//                onModelClicked(model)
-//                if (needToDownloadFirst) {
-//                  scope.launch {
-//                    delay(80)
-//                    checkNotificationPermissonAndStartDownload(
-//                      context = context,
-//                      launcher = launcher,
-//                      modelManagerViewModel = modelManagerViewModel,
-//                      model = model
-//                    )
-//                  }
-//                }
-//              }
-//            },
-//          ) {
-//            Icon(
-//              Icons.AutoMirrored.Rounded.ArrowForward,
-//              contentDescription = "",
-//              modifier = Modifier.padding(end = 4.dp)
-//            )
-//            if (needToDownloadFirst) {
-//              Text("Download & Try it", maxLines = 1)
-//            } else {
-//              Text("Try it", maxLines = 1)
-//            }
-//          }
         }
       }
     }
@@ -366,7 +339,6 @@ fun ModelItem(
       }
     }
   }
-
 }
 
 @Preview(showBackground = true)

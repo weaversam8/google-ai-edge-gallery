@@ -50,6 +50,12 @@ data class Task(
   /** Description of the task. */
   val description: String,
 
+  /** Documentation url for the task. */
+  val docUrl: String = "",
+
+  /** Source code url for the model-related functions. */
+  val sourceCodeUrl: String = "",
+
   /** Placeholder text for the name of the agent shown above chat messages. */
   @StringRes val agentNameRes: Int = R.string.chat_generic_agent_name,
 
@@ -80,6 +86,8 @@ val TASK_LLM_CHAT = Task(
   iconVectorResourceId = R.drawable.chat_spark,
   models = MODELS_LLM_CHAT,
   description = "Chat? with a on-device large language model",
+  docUrl = "https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android",
+  sourceCodeUrl = "https://github.com/google-ai-edge/gallery/blob/main/Android/src/app/src/main/java/com/google/aiedge/gallery/ui/llmchat/LlmChatModelHelper.kt",
   textInputPlaceHolderRes = R.string.text_input_placeholder_llm_chat
 )
 
@@ -88,13 +96,15 @@ val TASK_IMAGE_GENERATION = Task(
   iconVectorResourceId = R.drawable.image_spark,
   models = MODELS_IMAGE_GENERATION,
   description = "Generate images from text",
+  docUrl = "https://ai.google.dev/edge/mediapipe/solutions/vision/image_generator/android",
+  sourceCodeUrl = "https://github.com/google-ai-edge/gallery/blob/main/Android/src/app/src/main/java/com/google/aiedge/gallery/ui/imagegeneration/ImageGenerationModelHelper.kt",
   textInputPlaceHolderRes = R.string.text_image_generation_text_field_placeholder
 )
 
 /** All tasks. */
 val TASKS: List<Task> = listOf(
-  TASK_TEXT_CLASSIFICATION,
-  TASK_IMAGE_CLASSIFICATION,
+//  TASK_TEXT_CLASSIFICATION,
+//  TASK_IMAGE_CLASSIFICATION,
   TASK_IMAGE_GENERATION,
   TASK_LLM_CHAT,
 )

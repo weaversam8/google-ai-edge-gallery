@@ -115,26 +115,27 @@ data class CustomColors(
   val homeBottomGradient: List<Color> = listOf(),
   val userBubbleBgColor: Color = Color.Transparent,
   val agentBubbleBgColor: Color = Color.Transparent,
+  val linkColor: Color = Color.Transparent,
 )
 
 val LocalCustomColors = staticCompositionLocalOf { CustomColors() }
 
 val lightCustomColors = CustomColors(
   taskBgColors = listOf(
+    // green
+    Color(0xFFE1F6DE),
+    // blue
+    Color(0xFFEDF0FF),
     // yellow
     Color(0xFFFFEFC9),
     // red
     Color(0xFFFFEDE6),
-    // green
-    Color(0xFFE1F6DE),
-    // blue
-    Color(0xFFEDF0FF)
   ),
   taskIconColors = listOf(
-    Color(0xFFE37400),
-    Color(0xFFD93025),
     Color(0xFF34A853),
     Color(0xFF1967D2),
+    Color(0xFFE37400),
+    Color(0xFFD93025),
   ),
   taskIconShapeBgColor = Color.White,
   homeBottomGradient = listOf(
@@ -143,24 +144,25 @@ val lightCustomColors = CustomColors(
   ),
   agentBubbleBgColor = Color(0xFFe9eef6),
   userBubbleBgColor = Color(0xFF32628D),
+  linkColor = Color(0xFF32628D),
 )
 
 val darkCustomColors = CustomColors(
   taskBgColors = listOf(
+    // green
+    Color(0xFF2E312D),
+    // blue
+    Color(0xFF303033),
     // yellow
     Color(0xFF33302A),
     // red
     Color(0xFF362F2D),
-    // green
-    Color(0xFF2E312D),
-    // blue
-    Color(0xFF303033)
   ),
   taskIconColors = listOf(
-    Color(0xFFFFB955),
-    Color(0xFFFFB4AB),
     Color(0xFF6DD58C),
     Color(0xFFAAC7FF),
+    Color(0xFFFFB955),
+    Color(0xFFFFB4AB),
   ),
   taskIconShapeBgColor = Color(0xFF202124),
   homeBottomGradient = listOf(
@@ -169,6 +171,7 @@ val darkCustomColors = CustomColors(
   ),
   agentBubbleBgColor = Color(0xFF1b1c1d),
   userBubbleBgColor = Color(0xFF1f3760),
+  linkColor = Color(0xFF9DCAFC),
 )
 
 val MaterialTheme.customColors: CustomColors

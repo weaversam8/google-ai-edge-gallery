@@ -18,12 +18,11 @@ package com.google.aiedge.gallery.ui.llmchat
 
 import android.content.Context
 import android.util.Log
-import com.google.common.util.concurrent.ListenableFuture
-import com.google.mediapipe.tasks.genai.llminference.LlmInference
-import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 import com.google.aiedge.gallery.data.ConfigKey
 import com.google.aiedge.gallery.data.LlmBackend
 import com.google.aiedge.gallery.data.Model
+import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 
 private const val TAG = "AGLlmChatModelHelper"
 private const val DEFAULT_MAX_TOKEN = 1024
@@ -39,8 +38,6 @@ data class LlmModelInstance(val engine: LlmInference, val session: LlmInferenceS
 object LlmChatModelHelper {
   // Indexed by model name.
   private val cleanUpListeners: MutableMap<String, CleanUpListener> = mutableMapOf()
-  private val generateResponseListenableFutures: MutableMap<String, ListenableFuture<String>> =
-    mutableMapOf()
 
   fun initialize(
     context: Context, model: Model, onDone: () -> Unit
@@ -64,13 +61,12 @@ object LlmChatModelHelper {
     try {
       val llmInference = LlmInference.createFromOptions(context, options)
 
-//      val session = LlmInferenceSession.createFromOptions(
-//        llmInference,
-//        LlmInferenceSession.LlmInferenceSessionOptions.builder().setTopK(topK).setTopP(topP)
-//          .setTemperature(temperature).build()
-//      )
-      model.instance = llmInference
-//      LlmModelInstance(engine = llmInference, session = session)
+      val session = LlmInferenceSession.createFromOptions(
+        llmInference,
+        LlmInferenceSession.LlmInferenceSessionOptions.builder().setTopK(topK).setTopP(topP)
+          .setTemperature(temperature).build()
+      )
+      model.instance = LlmModelInstance(engine = llmInference, session = session)
     } catch (e: Exception) {
       e.printStackTrace()
     }
@@ -82,11 +78,10 @@ object LlmChatModelHelper {
       return
     }
 
-    val instance = model.instance as LlmInference
+    val instance = model.instance as LlmModelInstance
     try {
-      instance.close()
-//      instance.session.close()
-//      instance.engine.close()
+      instance.session.close()
+      instance.engine.close()
     } catch (e: Exception) {
       // ignore
     }
@@ -104,7 +99,7 @@ object LlmChatModelHelper {
     resultListener: ResultListener,
     cleanUpListener: CleanUpListener,
   ) {
-    val instance = model.instance as LlmInference
+    val instance = model.instance as LlmModelInstance
 
     // Set listener.
     if (!cleanUpListeners.containsKey(model.name)) {
@@ -112,24 +107,8 @@ object LlmChatModelHelper {
     }
 
     // Start async inference.
-    val future = instance.generateResponseAsync(input, resultListener)
-    generateResponseListenableFutures[model.name] = future
-
-//    val session = instance.session
-//     TODO: need to count token and reset session.
-//    session.addQueryChunk(input)
-//    session.generateResponseAsync(resultListener)
-  }
-
-  fun stopInference(model: Model) {
-    val instance = model.instance as LlmInference
-    if (instance != null) {
-      instance.close()
-    }
-//    val future = generateResponseListenableFutures[model.name]
-//    if (future != null) {
-//      future.cancel(true)
-//      generateResponseListenableFutures.remove(model.name)
-//    }
+    val session = instance.session
+    session.addQueryChunk(input)
+    session.generateResponseAsync(resultListener)
   }
 }

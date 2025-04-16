@@ -150,6 +150,8 @@ fun ChatPanel(
       lastMessageContent.value = tmpLastMessage.content
     }
   }
+  val lastShowingStatsByModel: MutableState<Map<String, MutableSet<ChatMessage>>> =
+    remember { mutableStateOf(mapOf()) }
 
   // Scroll the content to the bottom when any of these changes.
   LaunchedEffect(
@@ -158,9 +160,27 @@ fun ChatPanel(
     lastMessageContent.value,
     WindowInsets.ime.getBottom(density),
   ) {
+    // Only scroll if showingStatsByModel is not changed. In other words, when showingStatsByModel
+    // changes we want the display to not scroll.
     if (messages.isNotEmpty()) {
-      listState.animateScrollToItem(messages.lastIndex, scrollOffset = 10000)
+      if (uiState.showingStatsByModel === lastShowingStatsByModel.value) {
+        listState.animateScrollToItem(messages.lastIndex, scrollOffset = 10000)
+      } else {
+        // Scroll to bottom if the message to show stats is the last message.
+        val curShowingStats =
+          uiState.showingStatsByModel[selectedModel.name]?.toMutableSet() ?: mutableSetOf()
+        val lastShowingStats = lastShowingStatsByModel.value[selectedModel.name] ?: mutableSetOf()
+        curShowingStats.removeAll(lastShowingStats)
+        if (curShowingStats.isNotEmpty()) {
+          val index =
+            viewModel.getMessageIndex(model = selectedModel, message = curShowingStats.first())
+          if (index == messages.size - 2) {
+            listState.animateScrollToItem(messages.lastIndex, scrollOffset = 10000)
+          }
+        }
+      }
     }
+    lastShowingStatsByModel.value = uiState.showingStatsByModel
   }
 
   val nestedScrollConnection = remember {
@@ -309,7 +329,51 @@ fun ChatPanel(
                   }
                 }
                 if (message.side == ChatSide.AGENT) {
-                  LatencyText(message = message)
+                  Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                  ) {
+                    LatencyText(message = message)
+                    // A button to show stats for the LLM message.
+                    if (selectedModel.taskType == TaskType.LLM_CHAT && message is ChatMessageText
+                      // This means we only want to show the action button when the message is done
+                      // generating, at which point the latency will be set.
+                      && message.latencyMs >= 0
+                    ) {
+                      val showingStats =
+                        viewModel.isShowingStats(model = selectedModel, message = message)
+                      MessageActionButton(
+                        label = if (showingStats) "Hide stats" else "Show stats",
+                        icon = Icons.Outlined.Timer,
+                        onClick = {
+                          // Toggle showing stats.
+                          viewModel.toggleShowingStats(selectedModel, message)
+
+                          // Add the stats message after the LLM message.
+                          if (viewModel.isShowingStats(model = selectedModel, message = message)) {
+                            val llmBenchmarkResult = message.llmBenchmarkResult
+                            if (llmBenchmarkResult != null) {
+                              viewModel.insertMessageAfter(
+                                model = selectedModel,
+                                anchorMessage = message,
+                                messageToAdd = llmBenchmarkResult,
+                              )
+                            }
+                          }
+                          // Remove the stats message.
+                          else {
+                            val curMessageIndex =
+                              viewModel.getMessageIndex(model = selectedModel, message = message)
+                            viewModel.removeMessageAt(
+                              model = selectedModel,
+                              index = curMessageIndex + 1
+                            )
+                          }
+                        },
+                        enabled = !uiState.inProgress
+                      )
+                    }
+                  }
                 } else if (message.side == ChatSide.USER) {
                   Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -328,21 +392,21 @@ fun ChatPanel(
                     }
 
                     // Benchmark button
-                    if (selectedModel.showBenchmarkButton) {
-                      MessageActionButton(
-                        label = stringResource(R.string.benchmark),
-                        icon = Icons.Outlined.Timer,
-                        onClick = {
-                          if (selectedModel.taskType == TaskType.LLM_CHAT) {
-                            onBenchmarkClicked(selectedModel, message, 0, 0)
-                          } else {
-                            showBenchmarkConfigsDialog = true
-                            benchmarkMessage.value = message
-                          }
-                        },
-                        enabled = !uiState.inProgress
-                      )
-                    }
+//                    if (selectedModel.showBenchmarkButton) {
+//                      MessageActionButton(
+//                        label = stringResource(R.string.benchmark),
+//                        icon = Icons.Outlined.Timer,
+//                        onClick = {
+//                          if (selectedModel.taskType == TaskType.LLM_CHAT) {
+//                            onBenchmarkClicked(selectedModel, message, 0, 0)
+//                          } else {
+//                            showBenchmarkConfigsDialog = true
+//                            benchmarkMessage.value = message
+//                          }
+//                        },
+//                        enabled = !uiState.inProgress
+//                      )
+//                    }
                   }
                 }
               }

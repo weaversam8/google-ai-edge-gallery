@@ -43,6 +43,12 @@ data class ChatUiState(
    * A map of model names to the currently streaming chat message.
    */
   val streamingMessagesByModel: Map<String, ChatMessage> = mapOf(),
+
+  /*
+   * A map of model names to a map of chat messages to a boolean indicating whether the message is
+   * showing the stats below it.
+   */
+  val showingStatsByModel: Map<String, MutableSet<ChatMessage>> = mapOf(),
 )
 
 /**
@@ -66,6 +72,31 @@ open class ChatViewModel(val task: Task) : ViewModel() {
     _uiState.update { _uiState.value.copy(messagesByModel = newMessagesByModel) }
   }
 
+  fun insertMessageAfter(model: Model, anchorMessage: ChatMessage, messageToAdd: ChatMessage) {
+    val newMessagesByModel = _uiState.value.messagesByModel.toMutableMap()
+    val newMessages = newMessagesByModel[model.name]?.toMutableList()
+    if (newMessages != null) {
+      newMessagesByModel[model.name] = newMessages
+      // Find the index of the anchor message
+      val anchorIndex = newMessages.indexOf(anchorMessage)
+      if (anchorIndex != -1) {
+        // Insert the new message after the anchor message
+        newMessages.add(anchorIndex + 1, messageToAdd)
+      }
+    }
+    _uiState.update { _uiState.value.copy(messagesByModel = newMessagesByModel) }
+  }
+
+  fun removeMessageAt(model: Model, index: Int) {
+    val newMessagesByModel = _uiState.value.messagesByModel.toMutableMap()
+    val newMessages = newMessagesByModel[model.name]?.toMutableList()
+    if (newMessages != null) {
+      newMessagesByModel[model.name] = newMessages
+      newMessages.removeAt(index)
+    }
+    _uiState.update { _uiState.value.copy(messagesByModel = newMessagesByModel) }
+  }
+
   fun removeLastMessage(model: Model) {
     val newMessagesByModel = _uiState.value.messagesByModel.toMutableMap()
     val newMessages = newMessagesByModel[model.name]?.toMutableList() ?: mutableListOf()
@@ -80,7 +111,7 @@ open class ChatViewModel(val task: Task) : ViewModel() {
     return (_uiState.value.messagesByModel[model.name] ?: listOf()).lastOrNull()
   }
 
-  fun updateLastMessageContentIncrementally(
+  fun updateLastTextMessageContentIncrementally(
     model: Model,
     partialContent: String,
     latencyMs: Float,
@@ -124,6 +155,25 @@ open class ChatViewModel(val task: Task) : ViewModel() {
     _uiState.update { newUiState }
   }
 
+  fun updateLastTextMessageLlmBenchmarkResult(
+    model: Model,
+    llmBenchmarkResult: ChatMessageBenchmarkLlmResult
+  ) {
+    val newMessagesByModel = _uiState.value.messagesByModel.toMutableMap()
+    val newMessages = newMessagesByModel[model.name]?.toMutableList() ?: mutableListOf()
+    if (newMessages.size > 0) {
+      val lastMessage = newMessages.last()
+      if (lastMessage is ChatMessageText) {
+        lastMessage.llmBenchmarkResult = llmBenchmarkResult
+        newMessages.removeAt(newMessages.size - 1)
+        newMessages.add(lastMessage)
+      }
+    }
+    newMessagesByModel[model.name] = newMessages
+    val newUiState = _uiState.value.copy(messagesByModel = newMessagesByModel)
+    _uiState.update { newUiState }
+  }
+
   fun replaceLastMessage(model: Model, message: ChatMessage, type: ChatMessageType) {
     val newMessagesByModel = _uiState.value.messagesByModel.toMutableMap()
     val newMessages = newMessagesByModel[model.name]?.toMutableList() ?: mutableListOf()
@@ -159,10 +209,6 @@ open class ChatViewModel(val task: Task) : ViewModel() {
     _uiState.update { _uiState.value.copy(inProgress = inProgress) }
   }
 
-  fun isInProgress(): Boolean {
-    return _uiState.value.inProgress
-  }
-
   fun addConfigChangedMessage(
     oldConfigValues: Map<String, Any>, newConfigValues: Map<String, Any>, model: Model
   ) {
@@ -171,6 +217,26 @@ open class ChatViewModel(val task: Task) : ViewModel() {
       model = model, oldValues = oldConfigValues, newValues = newConfigValues
     )
     addMessage(message = message, model = model)
+  }
+
+  fun getMessageIndex(model: Model, message: ChatMessage): Int {
+    return (_uiState.value.messagesByModel[model.name] ?: listOf()).indexOf(message)
+  }
+
+  fun isShowingStats(model: Model, message: ChatMessage): Boolean {
+    return _uiState.value.showingStatsByModel[model.name]?.contains(message) ?: false
+  }
+
+  fun toggleShowingStats(model: Model, message: ChatMessage) {
+    val newShowingStatsByModel = _uiState.value.showingStatsByModel.toMutableMap()
+    val newShowingStats = newShowingStatsByModel[model.name]?.toMutableSet() ?: mutableSetOf()
+    if (newShowingStats.contains(message)) {
+      newShowingStats.remove(message)
+    } else {
+      newShowingStats.add(message)
+    }
+    newShowingStatsByModel[model.name] = newShowingStats
+    _uiState.update { _uiState.value.copy(showingStatsByModel = newShowingStatsByModel) }
   }
 
   private fun createUiState(task: Task): ChatUiState {

@@ -179,7 +179,7 @@ private fun getMessageLayoutConfig(
     is ChatMessageBenchmarkLlmResult -> {
       horizontalArrangement = Arrangement.SpaceBetween
       modifier = modifier.fillMaxWidth()
-      userLabel = "Benchmark"
+      userLabel = "Stats"
     }
 
     is ChatMessageImageWithHistory -> {

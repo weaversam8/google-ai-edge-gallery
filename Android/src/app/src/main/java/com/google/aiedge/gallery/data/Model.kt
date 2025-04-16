@@ -218,9 +218,6 @@ const val IMAGE_CLASSIFICATION_LEARN_MORE_URL = "https://ai.google.dev/edge/lite
 const val LLM_CHAT_INFO =
   "Some description about this large language model. A community org for developers to discover models that are ready for deployment to edge platforms"
 
-const val LLM_CHAT_LEARN_MORE_URL =
-  "https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android"
-
 const val IMAGE_GENERATION_INFO =
   "Powered by [MediaPipe Image Generation API](https://ai.google.dev/edge/mediapipe/solutions/vision/image_generator/android)"
 
@@ -234,7 +231,7 @@ val MODEL_LLM_GEMMA_2B_GPU_INT4: Model = Model(
   sizeInBytes = 1354301440L,
   configs = createLlmChatConfigs(),
   info = LLM_CHAT_INFO,
-  learnMoreUrl = LLM_CHAT_LEARN_MORE_URL,
+  learnMoreUrl = "https://huggingface.co/litert-community",
 )
 
 val MODEL_LLM_GEMMA_2_2B_GPU_INT8: Model = Model(
@@ -244,7 +241,7 @@ val MODEL_LLM_GEMMA_2_2B_GPU_INT8: Model = Model(
   sizeInBytes = 2627141632L,
   configs = createLlmChatConfigs(),
   info = LLM_CHAT_INFO,
-  learnMoreUrl = LLM_CHAT_LEARN_MORE_URL,
+  learnMoreUrl = "https://huggingface.co/litert-community",
 )
 
 val MODEL_LLM_GEMMA_3_1B_INT4: Model = Model(
@@ -254,7 +251,7 @@ val MODEL_LLM_GEMMA_3_1B_INT4: Model = Model(
   sizeInBytes = 554661243L,
   configs = createLlmChatConfigs(defaultTopK = 64, defaultTopP = 0.95f),
   info = LLM_CHAT_INFO,
-  learnMoreUrl = LLM_CHAT_LEARN_MORE_URL,
+  learnMoreUrl = "https://huggingface.co/litert-community/Gemma3-1B-IT",
   llmPromptTemplates = listOf(
     PromptTemplate(
       title = "Emoji Fun",
@@ -277,7 +274,7 @@ val MODEL_LLM_DEEPSEEK: Model = Model(
   llmBackend = LlmBackend.CPU,
   configs = createLlmChatConfigs(defaultTemperature = 0.6f, defaultTopK = 40, defaultTopP = 0.7f),
   info = LLM_CHAT_INFO,
-  learnMoreUrl = LLM_CHAT_LEARN_MORE_URL,
+  learnMoreUrl = "https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B",
 )
 
 val MODEL_TEXT_CLASSIFICATION_MOBILEBERT: Model = Model(
@@ -343,6 +340,7 @@ val MODEL_IMAGE_GENERATION_STABLE_DIFFUSION: Model = Model(
   showBenchmarkButton = false,
   info = IMAGE_GENERATION_INFO,
   configs = IMAGE_GENERATION_CONFIGS,
+  learnMoreUrl = "https://huggingface.co/litert-community",
 )
 
 val EMPTY_MODEL: Model = Model(

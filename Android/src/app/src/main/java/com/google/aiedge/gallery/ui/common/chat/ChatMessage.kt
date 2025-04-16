@@ -71,13 +71,17 @@ open class ChatMessageText(
   // Negative numbers will hide the latency display.
   override val latencyMs: Float = 0f,
   val isMarkdown: Boolean = true,
+
+  // Benchmark result for LLM response.
+  var llmBenchmarkResult: ChatMessageBenchmarkLlmResult? = null,
 ) : ChatMessage(type = ChatMessageType.TEXT, side = side, latencyMs = latencyMs) {
   override fun clone(): ChatMessageText {
     return ChatMessageText(
       content = content,
       side = side,
       latencyMs = latencyMs,
-      isMarkdown = isMarkdown
+      isMarkdown = isMarkdown,
+      llmBenchmarkResult = llmBenchmarkResult,
     )
   }
 }

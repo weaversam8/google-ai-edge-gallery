@@ -17,7 +17,6 @@
 package com.google.aiedge.gallery.ui.preview
 
 import android.content.Context
-import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.ModelDownloadStatus
 import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerUiState
@@ -39,8 +38,6 @@ class PreviewModelManagerViewModel(context: Context) :
       }
     }
 
-    val modelsByTaskName: Map<String, MutableList<Model>> =
-      ALL_PREVIEW_TASKS.associate { task -> task.type.label to task.models }
     val modelDownloadStatus = mapOf(
       MODEL_TEST1.name to ModelDownloadStatus(
         status = ModelDownloadStatusType.IN_PROGRESS,
@@ -61,7 +58,6 @@ class PreviewModelManagerViewModel(context: Context) :
     )
     val newUiState = ModelManagerUiState(
       tasks = ALL_PREVIEW_TASKS,
-      modelsByTaskName = modelsByTaskName,
       modelDownloadStatus = modelDownloadStatus,
       modelInitializationStatus = mapOf(),
       selectedModel = MODEL_TEST2,

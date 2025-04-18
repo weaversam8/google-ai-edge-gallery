@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.UnfoldLess
 import androidx.compose.material.icons.rounded.UnfoldMore
@@ -68,7 +69,7 @@ import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.ui.common.DownloadAndTryButton
 import com.google.aiedge.gallery.ui.common.TaskIcon
 import com.google.aiedge.gallery.ui.common.chat.MarkdownText
-import com.google.aiedge.gallery.ui.common.checkNotificationPermissonAndStartDownload
+import com.google.aiedge.gallery.ui.common.checkNotificationPermissionAndStartDownload
 import com.google.aiedge.gallery.ui.common.getTaskBgColor
 import com.google.aiedge.gallery.ui.common.getTaskIconColor
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
@@ -113,7 +114,7 @@ fun ModelItem(
   val launcher = rememberLauncherForActivityResult(
     ActivityResultContracts.RequestPermission()
   ) {
-    modelManagerViewModel.downloadModel(model)
+    modelManagerViewModel.downloadModel(task = task, model = model)
   }
 
   var isExpanded by remember { mutableStateOf(false) }
@@ -156,10 +157,11 @@ fun ModelItem(
           modelManagerViewModel = modelManagerViewModel,
           downloadStatus = downloadStatus,
           onDownloadClicked = { model ->
-            checkNotificationPermissonAndStartDownload(
+            checkNotificationPermissionAndStartDownload(
               context = context,
               launcher = launcher,
               modelManagerViewModel = modelManagerViewModel,
+              task = task,
               model = model
             )
           },
@@ -186,7 +188,9 @@ fun ModelItem(
           }
         } else {
           Icon(
-            if (isExpanded) Icons.Rounded.UnfoldLess else Icons.Rounded.UnfoldMore,
+            // For local model, show ">" directly indicating users can just tap the model item to
+            // go into it without needing to expand it first.
+            if (model.isLocalModel) Icons.Rounded.ChevronRight else if (isExpanded) Icons.Rounded.UnfoldLess else Icons.Rounded.UnfoldMore,
             contentDescription = "",
             tint = getTaskIconColor(task),
           )
@@ -237,6 +241,7 @@ fun ModelItem(
           val needToDownloadFirst =
             downloadStatus?.status == ModelDownloadStatusType.NOT_DOWNLOADED || downloadStatus?.status == ModelDownloadStatusType.FAILED
           DownloadAndTryButton(
+            task = task,
             model = model,
             enabled = isExpanded,
             needToDownloadFirst = needToDownloadFirst,
@@ -266,7 +271,13 @@ fun ModelItem(
       )
     boxModifier = if (canExpand) {
       boxModifier.clickable(
-        onClick = { isExpanded = !isExpanded },
+        onClick = {
+          if (!model.isLocalModel) {
+            isExpanded = !isExpanded
+          } else {
+            onModelClicked(model)
+          }
+        },
         interactionSource = remember { MutableInteractionSource() },
         indication = ripple(
           bounded = true,

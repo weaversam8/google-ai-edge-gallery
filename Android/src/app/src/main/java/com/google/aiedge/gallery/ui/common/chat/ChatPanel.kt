@@ -41,10 +41,13 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -83,11 +86,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.google.aiedge.gallery.R
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.data.TaskType
-import com.google.aiedge.gallery.ui.modelmanager.ModelInitializationStatus
+import com.google.aiedge.gallery.ui.modelmanager.ModelInitializationStatusType
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.aiedge.gallery.ui.preview.PreviewChatModel
 import com.google.aiedge.gallery.ui.preview.PreviewModelManagerViewModel
@@ -113,6 +117,7 @@ fun ChatPanel(
   onSendMessage: (Model, ChatMessage) -> Unit,
   onRunAgainClicked: (Model, ChatMessage) -> Unit,
   onBenchmarkClicked: (Model, ChatMessage, warmUpIterations: Int, benchmarkIterations: Int) -> Unit,
+  navigateUp: () -> Unit,
   modifier: Modifier = Modifier,
   onStreamImageMessage: (Model, ChatMessageImage) -> Unit = { _, _ -> },
   onStreamEnd: (Int) -> Unit = {},
@@ -139,6 +144,8 @@ fun ChatPanel(
 
   var showMessageLongPressedSheet by remember { mutableStateOf(false) }
   val longPressedMessage: MutableState<ChatMessage?> = remember { mutableStateOf(null) }
+
+  var showErrorDialog by remember { mutableStateOf(false) }
 
   // Keep track of the last message and last message content.
   val lastMessage: MutableState<ChatMessage?> = remember { mutableStateOf(null) }
@@ -200,6 +207,10 @@ fun ChatPanel(
 
   val modelInitializationStatus =
     modelManagerUiState.modelInitializationStatus[selectedModel.name]
+
+  LaunchedEffect(modelInitializationStatus) {
+    showErrorDialog = modelInitializationStatus?.status == ModelInitializationStatusType.ERROR
+  }
 
   Column(
     modifier = modifier.imePadding()
@@ -417,7 +428,7 @@ fun ChatPanel(
 
       // Model initialization in-progress message.
       this@Column.AnimatedVisibility(
-        visible = modelInitializationStatus == ModelInitializationStatus.INITIALIZING,
+        visible = modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING,
         enter = scaleIn() + fadeIn(),
         exit = scaleOut() + fadeOut(),
         modifier = Modifier.offset(y = 12.dp)
@@ -476,6 +487,47 @@ fun ChatPanel(
         },
         onStreamEnd = onStreamEnd,
       )
+    }
+  }
+
+  // Error dialog.
+  if (showErrorDialog) {
+    Dialog(
+      onDismissRequest = {
+        showErrorDialog = false
+        navigateUp()
+      },
+    ) {
+      Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+        Column(
+          modifier = Modifier
+            .padding(20.dp),
+          verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+          // Title
+          Text(
+            "Error",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 8.dp)
+          )
+
+          // Error
+          Text(
+            modelInitializationStatus?.error ?: "",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+          )
+
+          Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Button(onClick = {
+              showErrorDialog = false
+              navigateUp()
+            }) {
+              Text("Close")
+            }
+          }
+        }
+      }
     }
   }
 
@@ -547,6 +599,7 @@ fun ChatPanelPreview() {
       task = task,
       selectedModel = TASK_TEST1.models[1],
       viewModel = PreviewChatModel(context = context),
+      navigateUp = {},
       onSendMessage = { _, _ -> },
       onRunAgainClicked = { _, _ -> },
       onBenchmarkClicked = { _, _, _, _ -> },

@@ -21,6 +21,7 @@ import android.util.Log
 import com.google.aiedge.gallery.data.ConfigKey
 import com.google.aiedge.gallery.data.LlmBackend
 import com.google.aiedge.gallery.data.Model
+import com.google.aiedge.gallery.ui.common.cleanUpMediapipeTaskErrorMessage
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 
@@ -40,7 +41,7 @@ object LlmChatModelHelper {
   private val cleanUpListeners: MutableMap<String, CleanUpListener> = mutableMapOf()
 
   fun initialize(
-    context: Context, model: Model, onDone: () -> Unit
+    context: Context, model: Model, onDone: (String) -> Unit
   ) {
     val maxTokens =
       model.getIntConfigValue(key = ConfigKey.MAX_TOKENS, defaultValue = DEFAULT_MAX_TOKEN)
@@ -68,9 +69,10 @@ object LlmChatModelHelper {
       )
       model.instance = LlmModelInstance(engine = llmInference, session = session)
     } catch (e: Exception) {
-      e.printStackTrace()
+      onDone(cleanUpMediapipeTaskErrorMessage(e.message ?: "Unknown error"))
+      return
     }
-    onDone()
+    onDone("")
   }
 
   fun cleanUp(model: Model) {

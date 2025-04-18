@@ -124,7 +124,7 @@ fun ModelItemActionButton(
 
   if (showConfirmDeleteDialog) {
     ConfirmDeleteModelDialog(model = model, onConfirm = {
-      modelManagerViewModel.deleteModel(model)
+      modelManagerViewModel.deleteModel(task = task, model = model)
       showConfirmDeleteDialog = false
     }, onDismiss = {
       showConfirmDeleteDialog = false

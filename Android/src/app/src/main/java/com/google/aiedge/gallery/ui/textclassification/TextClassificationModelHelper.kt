@@ -40,14 +40,14 @@ class TextClassificationInferenceResult(
  * Helper object for managing text classification models.
  */
 object TextClassificationModelHelper {
-  fun initialize(context: Context, model: Model, onDone: () -> Unit) {
+  fun initialize(context: Context, model: Model, onDone: (String) -> Unit) {
     val modelByteBuffer = readFileToByteBuffer(File(model.getPath(context = context)))
     if (modelByteBuffer != null) {
       val options = TextClassifier.TextClassifierOptions.builder().setBaseOptions(
         BaseOptions.builder().setModelAssetBuffer(modelByteBuffer).build()
       ).build()
       model.instance = TextClassifier.createFromOptions(context, options)
-      onDone()
+      onDone("")
     }
   }
 

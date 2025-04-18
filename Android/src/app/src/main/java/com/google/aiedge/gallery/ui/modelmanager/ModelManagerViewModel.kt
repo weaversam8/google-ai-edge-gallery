@@ -24,16 +24,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.aiedge.gallery.data.AGWorkInfo
 import com.google.aiedge.gallery.data.AccessTokenData
+import com.google.aiedge.gallery.data.Config
 import com.google.aiedge.gallery.data.DataStoreRepository
 import com.google.aiedge.gallery.data.DownloadRepository
 import com.google.aiedge.gallery.data.EMPTY_MODEL
 import com.google.aiedge.gallery.data.HfModel
 import com.google.aiedge.gallery.data.HfModelDetails
 import com.google.aiedge.gallery.data.HfModelSummary
+import com.google.aiedge.gallery.data.IMPORTS_DIR
+import com.google.aiedge.gallery.data.LocalModelInfo
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.ModelDownloadStatus
 import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.data.TASKS
+import com.google.aiedge.gallery.data.TASK_LLM_CHAT
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.data.TaskType
 import com.google.aiedge.gallery.data.getModelByName
@@ -41,6 +45,7 @@ import com.google.aiedge.gallery.ui.common.AuthConfig
 import com.google.aiedge.gallery.ui.imageclassification.ImageClassificationModelHelper
 import com.google.aiedge.gallery.ui.imagegeneration.ImageGenerationModelHelper
 import com.google.aiedge.gallery.ui.llmchat.LlmChatModelHelper
+import com.google.aiedge.gallery.ui.llmchat.createLLmChatConfig
 import com.google.aiedge.gallery.ui.textclassification.TextClassificationModelHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -66,8 +71,12 @@ private const val TAG = "AGModelManagerViewModel"
 private const val HG_COMMUNITY = "jinjingforevercommunity"
 private const val TEXT_INPUT_HISTORY_MAX_SIZE = 50
 
-enum class ModelInitializationStatus {
-  NOT_INITIALIZED, INITIALIZING, INITIALIZED,
+data class ModelInitializationStatus(
+  val status: ModelInitializationStatusType, var error: String = ""
+)
+
+enum class ModelInitializationStatusType {
+  NOT_INITIALIZED, INITIALIZING, INITIALIZED, ERROR
 }
 
 enum class TokenStatus {
@@ -84,8 +93,7 @@ data class TokenStatusAndData(
 )
 
 data class TokenRequestResult(
-  val status: TokenRequestResultType,
-  val errorMessage: String? = null
+  val status: TokenRequestResultType, val errorMessage: String? = null
 )
 
 data class ModelManagerUiState(
@@ -93,11 +101,6 @@ data class ModelManagerUiState(
    * A list of tasks available in the application.
    */
   val tasks: List<Task>,
-
-  /**
-   * A map that stores lists of models indexed by task name.
-   */
-  val modelsByTaskName: Map<String, MutableList<Model>>,
 
   /**
    * A map that tracks the download status of each model, indexed by model name.
@@ -191,14 +194,14 @@ open class ModelManagerViewModel(
     _uiState.update { _uiState.value.copy(selectedModel = model) }
   }
 
-  fun downloadModel(model: Model) {
+  fun downloadModel(task: Task, model: Model) {
     // Update status.
     setDownloadStatus(
       curModel = model, status = ModelDownloadStatus(status = ModelDownloadStatusType.IN_PROGRESS)
     )
 
     // Delete the model files first.
-    deleteModel(model = model)
+    deleteModel(task = task, model = model)
 
     // Start to send download request.
     downloadRepository.downloadModel(
@@ -210,7 +213,7 @@ open class ModelManagerViewModel(
     downloadRepository.cancelDownloadModel(model)
   }
 
-  fun deleteModel(model: Model) {
+  fun deleteModel(task: Task, model: Model) {
     deleteFileFromExternalFilesDir(model.downloadFileName)
     for (file in model.extraDataFiles) {
       deleteFileFromExternalFilesDir(file.downloadFileName)
@@ -223,6 +226,24 @@ open class ModelManagerViewModel(
     val curModelDownloadStatus = uiState.value.modelDownloadStatus.toMutableMap()
     curModelDownloadStatus[model.name] =
       ModelDownloadStatus(status = ModelDownloadStatusType.NOT_DOWNLOADED)
+
+    // Delete model from the list if model is imported as a local model.
+    if (model.isLocalModel) {
+      val index = task.models.indexOf(model)
+      if (index >= 0) {
+        task.models.removeAt(index)
+      }
+      task.updateTrigger.value = System.currentTimeMillis()
+      curModelDownloadStatus.remove(model.name)
+
+      // Update preference.
+      val localModels = dataStoreRepository.readLocalModels().toMutableList()
+      val localModelIndex = localModels.indexOfFirst { it.fileName == model.name }
+      if (localModelIndex >= 0) {
+        localModels.removeAt(localModelIndex)
+      }
+      dataStoreRepository.saveLocalModels(localModels = localModels)
+    }
     val newUiState = uiState.value.copy(modelDownloadStatus = curModelDownloadStatus)
     _uiState.update { newUiState }
   }
@@ -230,7 +251,7 @@ open class ModelManagerViewModel(
   fun initializeModel(context: Context, model: Model, force: Boolean = false) {
     viewModelScope.launch(Dispatchers.Default) {
       // Skip if initialized already.
-      if (!force && uiState.value.modelInitializationStatus[model.name] == ModelInitializationStatus.INITIALIZED) {
+      if (!force && uiState.value.modelInitializationStatus[model.name]?.status == ModelInitializationStatusType.INITIALIZED) {
         Log.d(TAG, "Model '${model.name}' has been initialized. Skipping.")
         return@launch
       }
@@ -252,20 +273,27 @@ open class ModelManagerViewModel(
       // been initialized or not. If so, skip.
       launch {
         delay(500)
-        if (model.instance == null) {
+        if (model.instance == null && model.initializing) {
           updateModelInitializationStatus(
-            model = model, status = ModelInitializationStatus.INITIALIZING
+            model = model, status = ModelInitializationStatusType.INITIALIZING
           )
         }
       }
 
-      val onDone: () -> Unit = {
+      val onDone: (error: String) -> Unit = { error ->
+        model.initializing = false
         if (model.instance != null) {
           Log.d(TAG, "Model '${model.name}' initialized successfully")
-          model.initializing = false
           updateModelInitializationStatus(
             model = model,
-            status = ModelInitializationStatus.INITIALIZED,
+            status = ModelInitializationStatusType.INITIALIZED,
+          )
+        } else if (error.isNotEmpty()) {
+          Log.d(TAG, "Model '${model.name}' failed to initialize")
+          updateModelInitializationStatus(
+            model = model,
+            status = ModelInitializationStatusType.ERROR,
+            error = error,
           )
         }
       }
@@ -310,7 +338,7 @@ open class ModelManagerViewModel(
       model.instance = null
       model.initializing = false
       updateModelInitializationStatus(
-        model = model, status = ModelInitializationStatus.NOT_INITIALIZED
+        model = model, status = ModelInitializationStatusType.NOT_INITIALIZED
       )
     }
   }
@@ -380,14 +408,54 @@ open class ModelManagerViewModel(
     val connection = url.openConnection() as HttpURLConnection
     if (accessToken != null) {
       connection.setRequestProperty(
-        "Authorization",
-        "Bearer $accessToken"
+        "Authorization", "Bearer $accessToken"
       )
     }
     connection.connect()
 
     // Report the result.
     return connection.responseCode
+  }
+
+  fun addLocalLlmModel(task: Task, fileName: String, fileSize: Long) {
+    Log.d(TAG, "adding local model: $fileName, $fileSize")
+
+    // Create model.
+    val configs: List<Config> = createLLmChatConfig(defaults = mapOf())
+    val model = Model(
+      name = fileName,
+      url = "",
+      configs = configs,
+      sizeInBytes = fileSize,
+      downloadFileName = "$IMPORTS_DIR/$fileName",
+      isLocalModel = true,
+    )
+    model.preProcess(task = task)
+    task.models.add(model)
+
+    // Add initial status and states.
+    val modelDownloadStatus = uiState.value.modelDownloadStatus.toMutableMap()
+    val modelInstances = uiState.value.modelInitializationStatus.toMutableMap()
+    modelDownloadStatus[model.name] = ModelDownloadStatus(
+      status = ModelDownloadStatusType.SUCCEEDED, receivedBytes = fileSize, totalBytes = fileSize
+    )
+    modelInstances[model.name] =
+      ModelInitializationStatus(status = ModelInitializationStatusType.NOT_INITIALIZED)
+
+    // Update ui state.
+    _uiState.update {
+      uiState.value.copy(
+        tasks = uiState.value.tasks.toList(),
+        modelDownloadStatus = modelDownloadStatus,
+        modelInitializationStatus = modelInstances
+      )
+    }
+    task.updateTrigger.value = System.currentTimeMillis()
+
+    // Add to preference storage.
+    val localModels = dataStoreRepository.readLocalModels().toMutableList()
+    localModels.add(LocalModelInfo(fileName = fileName, fileSize = fileSize))
+    dataStoreRepository.saveLocalModels(localModels = localModels)
   }
 
   fun getTokenStatusAndData(): TokenStatusAndData {
@@ -436,8 +504,7 @@ open class ModelManagerViewModel(
     if (dataIntent == null) {
       onTokenRequested(
         TokenRequestResult(
-          status = TokenRequestResultType.FAILED,
-          errorMessage = "Empty auth result"
+          status = TokenRequestResultType.FAILED, errorMessage = "Empty auth result"
         )
       )
       return
@@ -481,8 +548,7 @@ open class ModelManagerViewModel(
           } else {
             onTokenRequested(
               TokenRequestResult(
-                status = TokenRequestResultType.FAILED,
-                errorMessage = errorMessage
+                status = TokenRequestResultType.FAILED, errorMessage = errorMessage
               )
             )
           }
@@ -513,15 +579,42 @@ open class ModelManagerViewModel(
   }
 
   private fun createUiState(): ModelManagerUiState {
-    val modelsByTaskName: Map<String, MutableList<Model>> =
-      TASKS.associate { task -> task.type.label to task.models }
     val modelDownloadStatus: MutableMap<String, ModelDownloadStatus> = mutableMapOf()
     val modelInstances: MutableMap<String, ModelInitializationStatus> = mutableMapOf()
-    for ((_, models) in modelsByTaskName.entries) {
-      for (model in models) {
+    for (task in TASKS) {
+      for (model in task.models) {
         modelDownloadStatus[model.name] = getModelDownloadStatus(model = model)
-        modelInstances[model.name] = ModelInitializationStatus.NOT_INITIALIZED
+        modelInstances[model.name] =
+          ModelInitializationStatus(status = ModelInitializationStatusType.NOT_INITIALIZED)
       }
+    }
+
+    // Load local models.
+    for (localModel in dataStoreRepository.readLocalModels()) {
+      Log.d(TAG, "stored local model: $localModel")
+
+      // Create model.
+      val configs: List<Config> = createLLmChatConfig(defaults = mapOf())
+      val model = Model(
+        name = localModel.fileName,
+        url = "",
+        configs = configs,
+        sizeInBytes = localModel.fileSize,
+        downloadFileName = "$IMPORTS_DIR/${localModel.fileName}",
+        isLocalModel = true,
+      )
+
+      // Add to task.
+      val task = TASK_LLM_CHAT
+      model.preProcess(task = task)
+      task.models.add(model)
+
+      // Update status.
+      modelDownloadStatus[model.name] = ModelDownloadStatus(
+        status = ModelDownloadStatusType.SUCCEEDED,
+        receivedBytes = localModel.fileSize,
+        totalBytes = localModel.fileSize
+      )
     }
 
     val textInputHistory = dataStoreRepository.readTextInputHistory()
@@ -529,7 +622,6 @@ open class ModelManagerViewModel(
 
     return ModelManagerUiState(
       tasks = TASKS,
-      modelsByTaskName = modelsByTaskName,
       modelDownloadStatus = modelDownloadStatus,
       modelInitializationStatus = modelInstances,
       textInputHistory = textInputHistory,
@@ -610,7 +702,8 @@ open class ModelManagerViewModel(
 
                 // Add initial status and states.
                 modelDownloadStatus[model.name] = getModelDownloadStatus(model = model)
-                modelInstances[model.name] = ModelInitializationStatus.NOT_INITIALIZED
+                modelInstances[model.name] =
+                  ModelInitializationStatus(status = ModelInitializationStatusType.NOT_INITIALIZED)
               }
             }
           }
@@ -677,9 +770,13 @@ open class ModelManagerViewModel(
     }
   }
 
-  private fun updateModelInitializationStatus(model: Model, status: ModelInitializationStatus) {
+  private fun updateModelInitializationStatus(
+    model: Model,
+    status: ModelInitializationStatusType,
+    error: String = ""
+  ) {
     val curModelInstance = uiState.value.modelInitializationStatus.toMutableMap()
-    curModelInstance[model.name] = status
+    curModelInstance[model.name] = ModelInitializationStatus(status = status, error = error)
     val newUiState = uiState.value.copy(modelInitializationStatus = curModelInstance)
     _uiState.update { newUiState }
   }

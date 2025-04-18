@@ -16,6 +16,7 @@
 
 package com.google.aiedge.gallery.data
 
+import com.google.aiedge.gallery.ui.common.ensureValidFileName
 import com.google.aiedge.gallery.ui.llmchat.createLLmChatConfig
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -103,7 +104,7 @@ data class HfModel(
     } else {
       listOf("")
     }
-    val fileName = "${id}_${(parts.lastOrNull() ?: "")}".replace(Regex("[^a-zA-Z0-9._-]"), "_")
+    val fileName = ensureValidFileName("${id}_${(parts.lastOrNull() ?: "")}")
 
     // Generate configs based on the given default values.
     val configs: List<Config> = when (task) {

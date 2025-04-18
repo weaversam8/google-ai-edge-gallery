@@ -55,7 +55,7 @@ import com.google.aiedge.gallery.data.AppBarActionType
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.data.Task
-import com.google.aiedge.gallery.ui.common.checkNotificationPermissonAndStartDownload
+import com.google.aiedge.gallery.ui.common.checkNotificationPermissionAndStartDownload
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.aiedge.gallery.ui.preview.PreviewChatModel
 import com.google.aiedge.gallery.ui.preview.PreviewModelManagerViewModel
@@ -104,7 +104,7 @@ fun ChatView(
   val launcher = rememberLauncherForActivityResult(
     ActivityResultContracts.RequestPermission()
   ) {
-    modelManagerViewModel.downloadModel(selectedModel)
+    modelManagerViewModel.downloadModel(task = task, model = selectedModel)
   }
 
   val handleNavigateUp = {
@@ -245,10 +245,11 @@ fun ChatView(
             exit = fadeOut()
           ) {
             ModelNotDownloaded(modifier = Modifier.weight(1f), onClicked = {
-              checkNotificationPermissonAndStartDownload(
+              checkNotificationPermissionAndStartDownload(
                 context = context,
                 launcher = launcher,
                 modelManagerViewModel = modelManagerViewModel,
+                task = task,
                 model = curSelectedModel
               )
             })
@@ -261,6 +262,7 @@ fun ChatView(
               task = task,
               selectedModel = curSelectedModel,
               viewModel = viewModel,
+              navigateUp = navigateUp,
               onSendMessage = onSendMessage,
               onRunAgainClicked = onRunAgainClicked,
               onBenchmarkClicked = onBenchmarkClicked,

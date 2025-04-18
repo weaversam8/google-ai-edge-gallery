@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.aiedge.gallery.data.Model
+import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.aiedge.gallery.ui.modelmanager.TokenRequestResultType
 import com.google.aiedge.gallery.ui.modelmanager.TokenStatus
@@ -90,6 +91,7 @@ private const val TAG = "AGDownloadAndTryButton"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadAndTryButton(
+  task: Task,
   model: Model,
   enabled: Boolean,
   needToDownloadFirst: Boolean,
@@ -106,17 +108,18 @@ fun DownloadAndTryButton(
   val permissionLauncher = rememberLauncherForActivityResult(
     ActivityResultContracts.RequestPermission()
   ) {
-    modelManagerViewModel.downloadModel(model)
+    modelManagerViewModel.downloadModel(task = task, model = model)
   }
 
   // Function to kick off download.
   val startDownload: (accessToken: String?) -> Unit = { accessToken ->
     model.accessToken = accessToken
     onClicked()
-    checkNotificationPermissonAndStartDownload(
+    checkNotificationPermissionAndStartDownload(
       context = context,
       launcher = permissionLauncher,
       modelManagerViewModel = modelManagerViewModel,
+      task = task,
       model = model
     )
     checkingToken = false

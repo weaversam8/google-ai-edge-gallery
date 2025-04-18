@@ -19,6 +19,8 @@ package com.google.aiedge.gallery.data
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ImageSearch
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.google.aiedge.gallery.R
 
@@ -63,7 +65,9 @@ data class Task(
   @StringRes val textInputPlaceHolderRes: Int = R.string.chat_textinput_placeholder,
 
   // The following fields are managed by the app. Don't need to set manually.
-  var index: Int = -1
+  var index: Int = -1,
+
+  val updateTrigger: MutableState<Long> = mutableStateOf(0)
 )
 
 val TASK_TEXT_CLASSIFICATION = Task(

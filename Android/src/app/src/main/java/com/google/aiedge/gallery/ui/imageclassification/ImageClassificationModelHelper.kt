@@ -48,7 +48,7 @@ class ImageClassificationInferenceResult(
 //TODO: handle error.
 
 object ImageClassificationModelHelper {
-  fun initialize(context: Context, model: Model, onDone: () -> Unit) {
+  fun initialize(context: Context, model: Model, onDone: (String) -> Unit) {
     val useGpu = model.getBooleanConfigValue(key = ConfigKey.USE_GPU)
     TfLiteGpu.isGpuDelegateAvailable(context).continueWith { gpuTask ->
       val optionsBuilder = TfLiteInitializationOptions.builder()
@@ -69,7 +69,7 @@ object ImageClassificationModelHelper {
           File(model.getPath(context = context)), interpreterOption
         )
         model.instance = interpreter
-        onDone()
+        onDone("")
       }
     }
   }

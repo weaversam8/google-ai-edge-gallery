@@ -32,6 +32,8 @@ enum class LlmBackend {
   CPU, GPU
 }
 
+const val IMPORTS_DIR = "__imports"
+
 /** A model for a task */
 data class Model(
   /** The Hugging Face model ID (if applicable). */
@@ -85,6 +87,9 @@ data class Model(
   /** The prompt templates for the model (only for LLM). */
   val llmPromptTemplates: List<PromptTemplate> = listOf(),
 
+  /** Whether the model is imported as a local model. */
+  val isLocalModel: Boolean = false,
+
   // The following fields are managed by the app. Don't need to set manually.
   var taskType: TaskType? = null,
   var instance: Any? = null,
@@ -104,10 +109,11 @@ data class Model(
   }
 
   fun getPath(context: Context, fileName: String = downloadFileName): String {
+    val baseDir = "${context.getExternalFilesDir(null)}"
     return if (this.isZip && this.unzipDir.isNotEmpty()) {
-      "${context.getExternalFilesDir(null)}/${this.unzipDir}"
+      "$baseDir/${this.unzipDir}"
     } else {
-      "${context.getExternalFilesDir(null)}/${fileName}"
+      "$baseDir/${fileName}"
     }
   }
 
@@ -139,6 +145,9 @@ data class Model(
     )
   }
 }
+
+/** Data for a imported local model. */
+data class LocalModelInfo(val fileName: String, val fileSize: Long)
 
 enum class ModelDownloadStatusType {
   NOT_DOWNLOADED, PARTIALLY_DOWNLOADED, IN_PROGRESS, UNZIPPING, SUCCEEDED, FAILED,

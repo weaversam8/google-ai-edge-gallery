@@ -416,10 +416,11 @@ fun getTaskIconColor(index: Int): Color {
   return MaterialTheme.customColors.taskIconColors[colorIndex]
 }
 
-fun checkNotificationPermissonAndStartDownload(
+fun checkNotificationPermissionAndStartDownload(
   context: Context,
   launcher: ManagedActivityResultLauncher<String, Boolean>,
   modelManagerViewModel: ModelManagerViewModel,
+  task: Task,
   model: Model
 ) {
   // Check permission
@@ -428,7 +429,7 @@ fun checkNotificationPermissonAndStartDownload(
     ContextCompat.checkSelfPermission(
       context, Manifest.permission.POST_NOTIFICATIONS
     ) -> {
-      modelManagerViewModel.downloadModel(model)
+      modelManagerViewModel.downloadModel(task = task, model = model)
     }
 
     // Otherwise, ask for permission
@@ -440,3 +441,14 @@ fun checkNotificationPermissonAndStartDownload(
   }
 }
 
+fun ensureValidFileName(fileName: String): String {
+  return fileName.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+}
+
+fun cleanUpMediapipeTaskErrorMessage(message: String): String {
+  val index = message.indexOf("=== Source Location Trace")
+  if (index >= 0) {
+    return message.substring(0, index)
+  }
+  return message
+}

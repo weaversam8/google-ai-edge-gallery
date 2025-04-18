@@ -24,6 +24,7 @@ import com.google.mediapipe.tasks.vision.imagegenerator.ImageGenerator
 import com.google.aiedge.gallery.data.ConfigKey
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.ui.common.LatencyProvider
+import com.google.aiedge.gallery.ui.common.cleanUpMediapipeTaskErrorMessage
 import kotlin.random.Random
 
 private const val TAG = "AGImageGenerationModelHelper"
@@ -33,12 +34,17 @@ class ImageGenerationInferenceResult(
 ) : LatencyProvider
 
 object ImageGenerationModelHelper {
-  fun initialize(context: Context, model: Model, onDone: () -> Unit) {
-    val options = ImageGenerator.ImageGeneratorOptions.builder()
-      .setImageGeneratorModelDirectory(model.getPath(context = context))
-      .build()
-    model.instance = ImageGenerator.createFromOptions(context, options)
-    onDone()
+  fun initialize(context: Context, model: Model, onDone: (String) -> Unit) {
+    try {
+      val options = ImageGenerator.ImageGeneratorOptions.builder()
+        .setImageGeneratorModelDirectory(model.getPath(context = context))
+        .build()
+      model.instance = ImageGenerator.createFromOptions(context, options)
+    } catch (e: Exception) {
+      onDone(cleanUpMediapipeTaskErrorMessage(e.message ?: "Unknown error"))
+      return
+    }
+    onDone("")
   }
 
   fun cleanUp(model: Model) {

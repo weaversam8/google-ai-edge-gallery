@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.aiedge.gallery.ui.modelmanager
+package com.google.aiedge.gallery.ui.home
 
 import android.content.Context
 import android.net.Uri
@@ -36,24 +36,40 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.google.aiedge.gallery.data.Accelerator
+import com.google.aiedge.gallery.data.Config
+import com.google.aiedge.gallery.data.ConfigKey
 import com.google.aiedge.gallery.data.IMPORTS_DIR
+import com.google.aiedge.gallery.data.LabelConfig
+import com.google.aiedge.gallery.data.ImportedModelInfo
+import com.google.aiedge.gallery.data.NumberSliderConfig
+import com.google.aiedge.gallery.data.SegmentedButtonConfig
+import com.google.aiedge.gallery.data.ValueType
+import com.google.aiedge.gallery.ui.common.chat.ConfigEditorsPanel
 import com.google.aiedge.gallery.ui.common.ensureValidFileName
 import com.google.aiedge.gallery.ui.common.humanReadableSize
+import com.google.aiedge.gallery.ui.llmchat.DEFAULT_MAX_TOKEN
+import com.google.aiedge.gallery.ui.llmchat.DEFAULT_TEMPERATURE
+import com.google.aiedge.gallery.ui.llmchat.DEFAULT_TOPK
+import com.google.aiedge.gallery.ui.llmchat.DEFAULT_TOPP
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -64,37 +80,151 @@ import java.nio.charset.StandardCharsets
 
 private const val TAG = "AGModelImportDialog"
 
-data class ModelImportInfo(val fileName: String, val fileSize: Long, val error: String = "")
+private val IMPORT_CONFIGS_LLM: List<Config> = listOf(
+  LabelConfig(key = ConfigKey.NAME),
+  LabelConfig(key = ConfigKey.MODEL_TYPE),
+  NumberSliderConfig(
+    key = ConfigKey.DEFAULT_MAX_TOKENS,
+    sliderMin = 100f,
+    sliderMax = 1024f,
+    defaultValue = DEFAULT_MAX_TOKEN.toFloat(),
+    valueType = ValueType.INT
+  ),
+  NumberSliderConfig(
+    key = ConfigKey.DEFAULT_TOPK,
+    sliderMin = 5f,
+    sliderMax = 40f,
+    defaultValue = DEFAULT_TOPK.toFloat(),
+    valueType = ValueType.INT
+  ),
+  NumberSliderConfig(
+    key = ConfigKey.DEFAULT_TOPP,
+    sliderMin = 0.0f,
+    sliderMax = 1.0f,
+    defaultValue = DEFAULT_TOPP,
+    valueType = ValueType.FLOAT
+  ),
+  NumberSliderConfig(
+    key = ConfigKey.DEFAULT_TEMPERATURE,
+    sliderMin = 0.0f,
+    sliderMax = 2.0f,
+    defaultValue = DEFAULT_TEMPERATURE,
+    valueType = ValueType.FLOAT
+  ),
+  SegmentedButtonConfig(
+    key = ConfigKey.COMPATIBLE_ACCELERATORS,
+    defaultValue = Accelerator.CPU.label,
+    options = listOf(Accelerator.CPU.label, Accelerator.GPU.label),
+    allowMultiple = true,
+  )
+)
 
 @Composable
 fun ModelImportDialog(
-  uri: Uri, onDone: (ModelImportInfo) -> Unit
+  uri: Uri,
+  onDismiss: () -> Unit,
+  onDone: (ImportedModelInfo) -> Unit
 ) {
   val context = LocalContext.current
-  val coroutineScope = rememberCoroutineScope()
+  val info = remember { getFileSizeAndDisplayNameFromUri(context = context, uri = uri) }
+  val fileSize by remember { mutableLongStateOf(info.first) }
+  val fileName by remember { mutableStateOf(ensureValidFileName(info.second)) }
 
-  var fileName by remember { mutableStateOf("") }
-  var fileSize by remember { mutableLongStateOf(0L) }
+  val initialValues: Map<String, Any> = remember {
+    mutableMapOf<String, Any>().apply {
+      for (config in IMPORT_CONFIGS_LLM) {
+        put(config.key.label, config.defaultValue)
+      }
+      put(ConfigKey.NAME.label, fileName)
+      // TODO: support other types.
+      put(ConfigKey.MODEL_TYPE.label, "LLM")
+    }
+  }
+  val values: SnapshotStateMap<String, Any> = remember {
+    mutableStateMapOf<String, Any>().apply {
+      putAll(initialValues)
+    }
+  }
+
+  Dialog(
+    onDismissRequest = onDismiss,
+  ) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+      Column(
+        modifier = Modifier
+          .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+      ) {
+        // Title.
+        Text(
+          "Import Model",
+          style = MaterialTheme.typography.titleLarge,
+          modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        // Default configs for users to set.
+        ConfigEditorsPanel(
+          configs = IMPORT_CONFIGS_LLM,
+          values = values,
+        )
+
+        // Button row.
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+          horizontalArrangement = Arrangement.End,
+        ) {
+          // Cancel button.
+          TextButton(
+            onClick = { onDismiss() },
+          ) {
+            Text("Cancel")
+          }
+
+          // Import button
+          Button(
+            onClick = {
+              onDone(
+                ImportedModelInfo(
+                  fileName = fileName,
+                  fileSize = fileSize,
+                  defaultValues = values,
+                )
+              )
+            },
+          ) {
+            Text("Import")
+          }
+        }
+
+      }
+    }
+  }
+}
+
+@Composable
+fun ModelImportingDialog(
+  uri: Uri,
+  info: ImportedModelInfo,
+  onDismiss: () -> Unit,
+  onDone: (ImportedModelInfo) -> Unit
+) {
   var error by remember { mutableStateOf("") }
+  val context = LocalContext.current
+  val coroutineScope = rememberCoroutineScope()
   var progress by remember { mutableFloatStateOf(0f) }
 
   LaunchedEffect(Unit) {
-    error = ""
-
-    // Get basic info.
-    val info = getFileSizeAndDisplayNameFromUri(context = context, uri = uri)
-    fileSize = info.first
-    fileName = ensureValidFileName(info.second)
-
     // Import.
     importModel(
       context = context,
       coroutineScope = coroutineScope,
-      fileName = fileName,
-      fileSize = fileSize,
+      fileName = info.fileName,
+      fileSize = info.fileSize,
       uri = uri,
       onDone = {
-        onDone(ModelImportInfo(fileName = fileName, fileSize = fileSize, error = error))
+        onDone(info)
       },
       onProgress = {
         progress = it
@@ -107,7 +237,7 @@ fun ModelImportDialog(
 
   Dialog(
     properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
-    onDismissRequest = {},
+    onDismissRequest = onDismiss,
   ) {
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
       Column(
@@ -117,7 +247,7 @@ fun ModelImportDialog(
       ) {
         // Title.
         Text(
-          "Importing...",
+          "Import Model",
           style = MaterialTheme.typography.titleLarge,
           modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -127,7 +257,7 @@ fun ModelImportDialog(
           // Progress bar.
           Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-              "$fileName (${fileSize.humanReadableSize()})",
+              "${info.fileName} (${info.fileSize.humanReadableSize()})",
               style = MaterialTheme.typography.labelSmall,
             )
             val animatedProgress = remember { Animatable(0f) }
@@ -162,7 +292,7 @@ fun ModelImportDialog(
           }
           Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Button(onClick = {
-              onDone(ModelImportInfo(fileName = "", fileSize = 0L, error = error))
+              onDismiss()
             }) {
               Text("Close")
             }

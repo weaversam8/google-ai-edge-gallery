@@ -92,7 +92,6 @@ private val DEFAULT_VERTICAL_PADDING = 16.dp
  * model description and buttons for learning more (opening a URL) and downloading/trying
  * the model.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModelItem(
   model: Model,
@@ -188,9 +187,9 @@ fun ModelItem(
           }
         } else {
           Icon(
-            // For local model, show ">" directly indicating users can just tap the model item to
+            // For imported model, show ">" directly indicating users can just tap the model item to
             // go into it without needing to expand it first.
-            if (model.isLocalModel) Icons.Rounded.ChevronRight else if (isExpanded) Icons.Rounded.UnfoldLess else Icons.Rounded.UnfoldMore,
+            if (model.imported) Icons.Rounded.ChevronRight else if (isExpanded) Icons.Rounded.UnfoldLess else Icons.Rounded.UnfoldMore,
             contentDescription = "",
             tint = getTaskIconColor(task),
           )
@@ -272,7 +271,7 @@ fun ModelItem(
     boxModifier = if (canExpand) {
       boxModifier.clickable(
         onClick = {
-          if (!model.isLocalModel) {
+          if (!model.imported) {
             isExpanded = !isExpanded
           } else {
             onModelClicked(model)

@@ -23,8 +23,10 @@ import androidx.activity.result.ActivityResult
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.aiedge.gallery.data.AGWorkInfo
+import com.google.aiedge.gallery.data.Accelerator
 import com.google.aiedge.gallery.data.AccessTokenData
 import com.google.aiedge.gallery.data.Config
+import com.google.aiedge.gallery.data.ConfigKey
 import com.google.aiedge.gallery.data.DataStoreRepository
 import com.google.aiedge.gallery.data.DownloadRepository
 import com.google.aiedge.gallery.data.EMPTY_MODEL
@@ -32,7 +34,7 @@ import com.google.aiedge.gallery.data.HfModel
 import com.google.aiedge.gallery.data.HfModelDetails
 import com.google.aiedge.gallery.data.HfModelSummary
 import com.google.aiedge.gallery.data.IMPORTS_DIR
-import com.google.aiedge.gallery.data.LocalModelInfo
+import com.google.aiedge.gallery.data.ImportedModelInfo
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.ModelDownloadStatus
 import com.google.aiedge.gallery.data.ModelDownloadStatusType
@@ -40,12 +42,14 @@ import com.google.aiedge.gallery.data.TASKS
 import com.google.aiedge.gallery.data.TASK_LLM_CHAT
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.data.TaskType
+import com.google.aiedge.gallery.data.ValueType
 import com.google.aiedge.gallery.data.getModelByName
 import com.google.aiedge.gallery.ui.common.AuthConfig
+import com.google.aiedge.gallery.ui.common.convertValueToTargetType
 import com.google.aiedge.gallery.ui.imageclassification.ImageClassificationModelHelper
 import com.google.aiedge.gallery.ui.imagegeneration.ImageGenerationModelHelper
 import com.google.aiedge.gallery.ui.llmchat.LlmChatModelHelper
-import com.google.aiedge.gallery.ui.llmchat.createLLmChatConfig
+import com.google.aiedge.gallery.ui.llmchat.createLlmChatConfigs
 import com.google.aiedge.gallery.ui.textclassification.TextClassificationModelHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -228,7 +232,7 @@ open class ModelManagerViewModel(
       ModelDownloadStatus(status = ModelDownloadStatusType.NOT_DOWNLOADED)
 
     // Delete model from the list if model is imported as a local model.
-    if (model.isLocalModel) {
+    if (model.imported) {
       val index = task.models.indexOf(model)
       if (index >= 0) {
         task.models.removeAt(index)
@@ -237,12 +241,12 @@ open class ModelManagerViewModel(
       curModelDownloadStatus.remove(model.name)
 
       // Update preference.
-      val localModels = dataStoreRepository.readLocalModels().toMutableList()
-      val localModelIndex = localModels.indexOfFirst { it.fileName == model.name }
-      if (localModelIndex >= 0) {
-        localModels.removeAt(localModelIndex)
+      val importedModels = dataStoreRepository.readImportedModels().toMutableList()
+      val importedModelIndex = importedModels.indexOfFirst { it.fileName == model.name }
+      if (importedModelIndex >= 0) {
+        importedModels.removeAt(importedModelIndex)
       }
-      dataStoreRepository.saveLocalModels(localModels = localModels)
+      dataStoreRepository.saveImportedModels(importedModels = importedModels)
     }
     val newUiState = uiState.value.copy(modelDownloadStatus = curModelDownloadStatus)
     _uiState.update { newUiState }
@@ -417,27 +421,20 @@ open class ModelManagerViewModel(
     return connection.responseCode
   }
 
-  fun addLocalLlmModel(task: Task, fileName: String, fileSize: Long) {
-    Log.d(TAG, "adding local model: $fileName, $fileSize")
+  fun addImportedLlmModel(task: Task, info: ImportedModelInfo) {
+    Log.d(TAG, "adding imported llm model: $info")
 
     // Create model.
-    val configs: List<Config> = createLLmChatConfig(defaults = mapOf())
-    val model = Model(
-      name = fileName,
-      url = "",
-      configs = configs,
-      sizeInBytes = fileSize,
-      downloadFileName = "$IMPORTS_DIR/$fileName",
-      isLocalModel = true,
-    )
-    model.preProcess(task = task)
+    val model = createModelFromImportedModelInfo(info = info, task = task)
     task.models.add(model)
 
     // Add initial status and states.
     val modelDownloadStatus = uiState.value.modelDownloadStatus.toMutableMap()
     val modelInstances = uiState.value.modelInitializationStatus.toMutableMap()
     modelDownloadStatus[model.name] = ModelDownloadStatus(
-      status = ModelDownloadStatusType.SUCCEEDED, receivedBytes = fileSize, totalBytes = fileSize
+      status = ModelDownloadStatusType.SUCCEEDED,
+      receivedBytes = info.fileSize,
+      totalBytes = info.fileSize
     )
     modelInstances[model.name] =
       ModelInitializationStatus(status = ModelInitializationStatusType.NOT_INITIALIZED)
@@ -453,9 +450,9 @@ open class ModelManagerViewModel(
     task.updateTrigger.value = System.currentTimeMillis()
 
     // Add to preference storage.
-    val localModels = dataStoreRepository.readLocalModels().toMutableList()
-    localModels.add(LocalModelInfo(fileName = fileName, fileSize = fileSize))
-    dataStoreRepository.saveLocalModels(localModels = localModels)
+    val importedModels = dataStoreRepository.readImportedModels().toMutableList()
+    importedModels.add(info)
+    dataStoreRepository.saveImportedModels(importedModels = importedModels)
   }
 
   fun getTokenStatusAndData(): TokenStatusAndData {
@@ -589,31 +586,22 @@ open class ModelManagerViewModel(
       }
     }
 
-    // Load local models.
-    for (localModel in dataStoreRepository.readLocalModels()) {
-      Log.d(TAG, "stored local model: $localModel")
+    // Load imported models.
+    for (importedModel in dataStoreRepository.readImportedModels()) {
+      Log.d(TAG, "stored imported model: $importedModel")
 
       // Create model.
-      val configs: List<Config> = createLLmChatConfig(defaults = mapOf())
-      val model = Model(
-        name = localModel.fileName,
-        url = "",
-        configs = configs,
-        sizeInBytes = localModel.fileSize,
-        downloadFileName = "$IMPORTS_DIR/${localModel.fileName}",
-        isLocalModel = true,
-      )
+      val model = createModelFromImportedModelInfo(info = importedModel, task = TASK_LLM_CHAT)
 
       // Add to task.
       val task = TASK_LLM_CHAT
-      model.preProcess(task = task)
       task.models.add(model)
 
       // Update status.
       modelDownloadStatus[model.name] = ModelDownloadStatus(
         status = ModelDownloadStatusType.SUCCEEDED,
-        receivedBytes = localModel.fileSize,
-        totalBytes = localModel.fileSize
+        receivedBytes = importedModel.fileSize,
+        totalBytes = importedModel.fileSize
       )
     }
 
@@ -626,6 +614,51 @@ open class ModelManagerViewModel(
       modelInitializationStatus = modelInstances,
       textInputHistory = textInputHistory,
     )
+  }
+
+  private fun createModelFromImportedModelInfo(info: ImportedModelInfo, task: Task): Model {
+    val accelerators: List<Accelerator> = (convertValueToTargetType(
+      info.defaultValues[ConfigKey.COMPATIBLE_ACCELERATORS.label]!!,
+      ValueType.STRING
+    ) as String)
+      .split(",")
+      .mapNotNull { acceleratorLabel ->
+        when (acceleratorLabel.trim()) {
+          Accelerator.GPU.label -> Accelerator.GPU
+          Accelerator.CPU.label -> Accelerator.CPU
+          else -> null // Ignore unknown accelerator labels
+        }
+      }
+    val configs: List<Config> = createLlmChatConfigs(
+      defaultMaxToken = convertValueToTargetType(
+        info.defaultValues[ConfigKey.DEFAULT_MAX_TOKENS.label]!!,
+        ValueType.INT
+      ) as Int,
+      defaultTopK = convertValueToTargetType(
+        info.defaultValues[ConfigKey.DEFAULT_TOPK.label]!!,
+        ValueType.INT
+      ) as Int,
+      defaultTopP = convertValueToTargetType(
+        info.defaultValues[ConfigKey.DEFAULT_TOPP.label]!!,
+        ValueType.FLOAT
+      ) as Float,
+      defaultTemperature = convertValueToTargetType(
+        info.defaultValues[ConfigKey.DEFAULT_TEMPERATURE.label]!!,
+        ValueType.FLOAT
+      ) as Float,
+      accelerators = accelerators,
+    )
+    val model = Model(
+      name = info.fileName,
+      url = "",
+      configs = configs,
+      sizeInBytes = info.fileSize,
+      downloadFileName = "$IMPORTS_DIR/${info.fileName}",
+      imported = true,
+    )
+    model.preProcess(task = task)
+
+    return model
   }
 
   /**
@@ -771,9 +804,7 @@ open class ModelManagerViewModel(
   }
 
   private fun updateModelInitializationStatus(
-    model: Model,
-    status: ModelInitializationStatusType,
-    error: String = ""
+    model: Model, status: ModelInitializationStatusType, error: String = ""
   ) {
     val curModelInstance = uiState.value.modelInitializationStatus.toMutableMap()
     curModelInstance[model.name] = ModelInitializationStatus(status = status, error = error)

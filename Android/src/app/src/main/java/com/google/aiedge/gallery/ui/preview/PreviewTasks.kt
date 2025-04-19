@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import com.google.aiedge.gallery.data.BooleanSwitchConfig
 import com.google.aiedge.gallery.data.Config
 import com.google.aiedge.gallery.data.ConfigKey
+import com.google.aiedge.gallery.data.LabelConfig
 import com.google.aiedge.gallery.data.SegmentedButtonConfig
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.NumberSliderConfig
@@ -30,6 +31,10 @@ import com.google.aiedge.gallery.data.TaskType
 import com.google.aiedge.gallery.data.ValueType
 
 val TEST_CONFIGS1: List<Config> = listOf(
+  LabelConfig(
+    key = ConfigKey.NAME,
+    defaultValue = "Test name",
+  ),
   NumberSliderConfig(
     key = ConfigKey.MAX_RESULT_COUNT,
     sliderMin = 1f,

@@ -18,18 +18,14 @@ package com.google.aiedge.gallery.ui.llmchat
 
 import android.content.Context
 import android.util.Log
+import com.google.aiedge.gallery.data.Accelerator
 import com.google.aiedge.gallery.data.ConfigKey
-import com.google.aiedge.gallery.data.LlmBackend
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.ui.common.cleanUpMediapipeTaskErrorMessage
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 
 private const val TAG = "AGLlmChatModelHelper"
-private const val DEFAULT_MAX_TOKEN = 1024
-private const val DEFAULT_TOPK = 40
-private const val DEFAULT_TOPP = 0.9f
-private const val DEFAULT_TEMPERATURE = 1.0f
 
 typealias ResultListener = (partialResult: String, done: Boolean) -> Unit
 typealias CleanUpListener = () -> Unit
@@ -49,10 +45,13 @@ object LlmChatModelHelper {
     val topP = model.getFloatConfigValue(key = ConfigKey.TOPP, defaultValue = DEFAULT_TOPP)
     val temperature =
       model.getFloatConfigValue(key = ConfigKey.TEMPERATURE, defaultValue = DEFAULT_TEMPERATURE)
+    val accelerator =
+      model.getStringConfigValue(key = ConfigKey.ACCELERATOR, defaultValue = Accelerator.GPU.label)
     Log.d(TAG, "Initializing...")
-    val preferredBackend = when (model.llmBackend) {
-      LlmBackend.CPU -> LlmInference.Backend.CPU
-      LlmBackend.GPU -> LlmInference.Backend.GPU
+    val preferredBackend = when (accelerator) {
+      Accelerator.CPU.label -> LlmInference.Backend.CPU
+      Accelerator.GPU.label -> LlmInference.Backend.GPU
+      else -> LlmInference.Backend.GPU
     }
     val options =
       LlmInference.LlmInferenceOptions.builder().setModelPath(model.getPath(context = context))

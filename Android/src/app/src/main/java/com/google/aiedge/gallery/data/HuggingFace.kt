@@ -17,7 +17,6 @@
 package com.google.aiedge.gallery.data
 
 import com.google.aiedge.gallery.ui.common.ensureValidFileName
-import com.google.aiedge.gallery.ui.llmchat.createLLmChatConfig
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -107,11 +106,13 @@ data class HfModel(
     val fileName = ensureValidFileName("${id}_${(parts.lastOrNull() ?: "")}")
 
     // Generate configs based on the given default values.
-    val configs: List<Config> = when (task) {
-      TASK_LLM_CHAT.type.label -> createLLmChatConfig(defaults = configs)
-      // todo: add configs for other types.
-      else -> listOf()
-    }
+//    val configs: List<Config> = when (task) {
+//      TASK_LLM_CHAT.type.label -> createLLmChatConfig(defaults = configs)
+//      // todo: add configs for other types.
+//      else -> listOf()
+//    }
+    // todo: fix when loading from models.json
+    val configs: List<Config> = listOf()
 
     // Construct url.
     var modelUrl = url

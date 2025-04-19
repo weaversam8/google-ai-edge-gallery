@@ -34,16 +34,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MultiChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.google.aiedge.gallery.data.BooleanSwitchConfig
 import com.google.aiedge.gallery.data.Config
+import com.google.aiedge.gallery.data.LabelConfig
 import com.google.aiedge.gallery.data.NumberSliderConfig
 import com.google.aiedge.gallery.data.SegmentedButtonConfig
 import com.google.aiedge.gallery.data.ValueType
@@ -113,27 +113,10 @@ fun ConfigDialog(
           }
         }
 
-
         // List of config rows.
-        for (config in configs) {
-          when (config) {
-            // Number slider.
-            is NumberSliderConfig -> {
-              NumberSliderRow(config = config, values = values)
-            }
+        ConfigEditorsPanel(configs = configs, values = values)
 
-            // Boolean switch.
-            is BooleanSwitchConfig -> {
-              BooleanSwitchRow(config = config, values = values)
-            }
-
-            is SegmentedButtonConfig -> {
-              SegmentedButtonRow(config = config, values = values)
-            }
-
-            else -> {}
-          }
-        }
+        // Button row.
         Row(
           modifier = Modifier
             .fillMaxWidth()
@@ -161,6 +144,53 @@ fun ConfigDialog(
         }
       }
     }
+  }
+}
+
+/**
+ * Composable function to display a list of config editor rows.
+ */
+@Composable
+fun ConfigEditorsPanel(configs: List<Config>, values: SnapshotStateMap<String, Any>) {
+  for (config in configs) {
+    when (config) {
+      // Label.
+      is LabelConfig -> {
+        LabelRow(config = config, values = values)
+      }
+
+      // Number slider.
+      is NumberSliderConfig -> {
+        NumberSliderRow(config = config, values = values)
+      }
+
+      // Boolean switch.
+      is BooleanSwitchConfig -> {
+        BooleanSwitchRow(config = config, values = values)
+      }
+
+      // Segmented button.
+      is SegmentedButtonConfig -> {
+        SegmentedButtonRow(config = config, values = values)
+      }
+
+      else -> {}
+    }
+  }
+}
+
+@Composable
+fun LabelRow(config: LabelConfig, values: SnapshotStateMap<String, Any>) {
+  Column(modifier = Modifier.fillMaxWidth()) {
+    // Field label.
+    Text(config.key.label, style = MaterialTheme.typography.titleSmall)
+    // Content label.
+    val label = try {
+      values[config.key.label] as String
+    } catch (e: Exception) {
+      ""
+    }
+    Text(label, style = MaterialTheme.typography.bodyMedium)
   }
 }
 
@@ -272,18 +302,41 @@ fun BooleanSwitchRow(config: BooleanSwitchConfig, values: SnapshotStateMap<Strin
 
 @Composable
 fun SegmentedButtonRow(config: SegmentedButtonConfig, values: SnapshotStateMap<String, Any>) {
-  var selectedIndex by remember { mutableIntStateOf(config.options.indexOf(values[config.key.label])) }
+  val selectedOptions: List<String> = remember { (values[config.key.label] as String).split(",") }
+  var selectionStates: List<Boolean> by remember {
+    mutableStateOf(List(config.options.size) { index ->
+      selectedOptions.contains(config.options[index])
+    })
+  }
 
   Column(modifier = Modifier.fillMaxWidth()) {
     Text(config.key.label, style = MaterialTheme.typography.titleSmall)
-    SingleChoiceSegmentedButtonRow {
+    MultiChoiceSegmentedButtonRow {
       config.options.forEachIndexed { index, label ->
         SegmentedButton(shape = SegmentedButtonDefaults.itemShape(
           index = index, count = config.options.size
-        ), onClick = {
-          selectedIndex = index
-          values[config.key.label] = label
-        }, selected = index == selectedIndex, label = { Text(label) })
+        ), onCheckedChange = {
+          var newSelectionStates = selectionStates.toMutableList()
+          val selectedCount = newSelectionStates.count { it }
+
+          // Single select.
+          if (!config.allowMultiple) {
+            if (!newSelectionStates[index]) {
+              newSelectionStates = MutableList(config.options.size) { it == index }
+            }
+          }
+          // Multiple select.
+          else {
+            if (!(selectedCount == 1 && newSelectionStates[index])) {
+              newSelectionStates[index] = !newSelectionStates[index]
+            }
+          }
+          selectionStates = newSelectionStates
+
+          values[config.key.label] =
+            config.options.filterIndexed { index, option -> selectionStates[index] }
+              .joinToString(",")
+        }, checked = selectionStates[index], label = { Text(label) })
       }
     }
 

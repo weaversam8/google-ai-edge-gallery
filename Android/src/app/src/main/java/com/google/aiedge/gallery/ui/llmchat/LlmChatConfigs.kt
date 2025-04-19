@@ -16,24 +16,25 @@
 
 package com.google.aiedge.gallery.ui.llmchat
 
+import com.google.aiedge.gallery.data.Accelerator
 import com.google.aiedge.gallery.data.Config
 import com.google.aiedge.gallery.data.ConfigKey
-import com.google.aiedge.gallery.data.ConfigValue
 import com.google.aiedge.gallery.data.NumberSliderConfig
+import com.google.aiedge.gallery.data.SegmentedButtonConfig
 import com.google.aiedge.gallery.data.ValueType
-import com.google.aiedge.gallery.data.getFloatConfigValue
-import com.google.aiedge.gallery.data.getIntConfigValue
 
-private const val DEFAULT_MAX_TOKEN = 1024
-private const val DEFAULT_TOPK = 40
-private const val DEFAULT_TOPP = 0.9f
-private const val DEFAULT_TEMPERATURE = 1.0f
+const val DEFAULT_MAX_TOKEN = 1024
+const val DEFAULT_TOPK = 40
+const val DEFAULT_TOPP = 0.9f
+const val DEFAULT_TEMPERATURE = 1.0f
+val DEFAULT_ACCELERATORS = listOf(Accelerator.GPU)
 
 fun createLlmChatConfigs(
   defaultMaxToken: Int = DEFAULT_MAX_TOKEN,
   defaultTopK: Int = DEFAULT_TOPK,
   defaultTopP: Float = DEFAULT_TOPP,
-  defaultTemperature: Float = DEFAULT_TEMPERATURE
+  defaultTemperature: Float = DEFAULT_TEMPERATURE,
+  accelerators: List<Accelerator> = DEFAULT_ACCELERATORS,
 ): List<Config> {
   return listOf(
     NumberSliderConfig(
@@ -64,21 +65,10 @@ fun createLlmChatConfigs(
       defaultValue = defaultTemperature,
       valueType = ValueType.FLOAT
     ),
-  )
-}
-
-fun createLLmChatConfig(defaults: Map<String, ConfigValue>): List<Config> {
-  val defaultMaxToken =
-    getIntConfigValue(defaults[ConfigKey.MAX_TOKENS.id], default = DEFAULT_MAX_TOKEN)
-  val defaultTopK = getIntConfigValue(defaults[ConfigKey.TOPK.id], default = DEFAULT_TOPK)
-  val defaultTopP = getFloatConfigValue(defaults[ConfigKey.TOPP.id], default = DEFAULT_TOPP)
-  val defaultTemperature =
-    getFloatConfigValue(defaults[ConfigKey.TEMPERATURE.id], default = DEFAULT_TEMPERATURE)
-
-  return createLlmChatConfigs(
-    defaultMaxToken = defaultMaxToken,
-    defaultTopK = defaultTopK,
-    defaultTopP = defaultTopP,
-    defaultTemperature = defaultTemperature
+    SegmentedButtonConfig(
+      key = ConfigKey.ACCELERATOR,
+      defaultValue = if (accelerators.contains(Accelerator.GPU)) Accelerator.GPU.label else accelerators[0].label,
+      options = accelerators.map { it.label }
+    )
   )
 }

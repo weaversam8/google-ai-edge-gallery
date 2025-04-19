@@ -16,13 +16,7 @@
 
 package com.google.aiedge.gallery.ui.modelmanager
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Build
-import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,32 +24,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.NoteAdd
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -75,14 +58,11 @@ import com.google.aiedge.gallery.ui.preview.PreviewModelManagerViewModel
 import com.google.aiedge.gallery.ui.preview.TASK_TEST1
 import com.google.aiedge.gallery.ui.theme.GalleryTheme
 import com.google.aiedge.gallery.ui.theme.customColors
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 private const val TAG = "AGModelList"
 
 /** The list of models in the model manager. */
 @RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModelList(
   task: Task,
@@ -91,47 +71,26 @@ fun ModelList(
   onModelClicked: (Model) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  var showAddModelSheet by remember { mutableStateOf(false) }
-  var showImportingDialog by remember { mutableStateOf(false) }
-  val curFileUri = remember { mutableStateOf<Uri?>(null) }
-  val sheetState = rememberModalBottomSheetState()
-  val coroutineScope = rememberCoroutineScope()
-
   // This is just to update "models" list when task.updateTrigger is updated so that the UI can
   // be properly updated.
   val models by remember {
     derivedStateOf {
       val trigger = task.updateTrigger.value
       if (trigger >= 0) {
-        task.models.toList().filter { !it.isLocalModel }
+        task.models.toList().filter { !it.imported }
       } else {
         listOf()
       }
     }
   }
-  val localModels by remember {
+  val importedModels by remember {
     derivedStateOf {
       val trigger = task.updateTrigger.value
       if (trigger >= 0) {
-        task.models.toList().filter { it.isLocalModel }
+        task.models.toList().filter { it.imported }
       } else {
         listOf()
       }
-    }
-  }
-
-  val filePickerLauncher: ActivityResultLauncher<Intent> = rememberLauncherForActivityResult(
-    contract = ActivityResultContracts.StartActivityForResult()
-  ) { result ->
-    if (result.resultCode == android.app.Activity.RESULT_OK) {
-      result.data?.data?.let { uri ->
-        curFileUri.value = uri
-        showImportingDialog = true
-      } ?: run {
-        Log.d(TAG, "No file selected or URI is null.")
-      }
-    } else {
-      Log.d(TAG, "File picking cancelled.")
     }
   }
 
@@ -190,11 +149,11 @@ fun ModelList(
         }
       }
 
-      // Title for local models.
-      if (localModels.isNotEmpty()) {
-        item(key = "localModelsTitle") {
+      // Title for imported models.
+      if (importedModels.isNotEmpty()) {
+        item(key = "importedModelsTitle") {
           Text(
-            "Local models",
+            "Imported models",
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
             modifier = Modifier
               .padding(horizontal = 16.dp)
@@ -203,8 +162,8 @@ fun ModelList(
         }
       }
 
-      // List of local models within a task.
-      items(items = localModels) { model ->
+      // List of imported models within a task.
+      items(items = importedModels) { model ->
         Box {
           ModelItem(
             model = model,
@@ -215,88 +174,6 @@ fun ModelList(
           )
         }
       }
-
-      item(key = "bottomPadding") {
-        Spacer(modifier = Modifier.height(60.dp))
-      }
-    }
-
-    // Add model button at the bottom right.
-    Box(
-      modifier = Modifier
-        .padding(end = 16.dp)
-        .padding(bottom = contentPadding.calculateBottomPadding())
-    ) {
-      SmallFloatingActionButton(
-        onClick = {
-          showAddModelSheet = true
-        },
-        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.secondary,
-      ) {
-        Icon(Icons.Filled.Add, "")
-      }
-    }
-  }
-
-  if (showAddModelSheet) {
-    ModalBottomSheet(
-      onDismissRequest = { showAddModelSheet = false },
-      sheetState = sheetState,
-    ) {
-      Text(
-        "Add custom model",
-        style = MaterialTheme.typography.titleLarge,
-        modifier = Modifier.padding(vertical = 4.dp, horizontal = 16.dp)
-      )
-      Box(modifier = Modifier.clickable {
-        coroutineScope.launch {
-          // Give it sometime to show the click effect.
-          delay(200)
-          showAddModelSheet = false
-
-          // Show file picker.
-          val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*"
-            putExtra(
-              Intent.EXTRA_MIME_TYPES,
-              arrayOf("application/x-binary", "application/octet-stream")
-            )
-            // Single select.
-            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
-          }
-          filePickerLauncher.launch(intent)
-        }
-      }) {
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(6.dp),
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-        ) {
-          Icon(Icons.AutoMirrored.Outlined.NoteAdd, contentDescription = "")
-          Text("Add local model")
-        }
-      }
-    }
-  }
-
-  if (showImportingDialog) {
-    curFileUri.value?.let { uri ->
-      ModelImportDialog(uri = uri, onDone = { info ->
-        showImportingDialog = false
-
-        if (info.error.isEmpty()) {
-          // TODO: support other model types.
-          modelManagerViewModel.addLocalLlmModel(
-            task = task,
-            fileName = info.fileName,
-            fileSize = info.fileSize
-          )
-        }
-      })
     }
   }
 }

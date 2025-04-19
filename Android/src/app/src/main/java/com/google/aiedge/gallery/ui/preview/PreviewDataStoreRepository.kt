@@ -18,7 +18,7 @@ package com.google.aiedge.gallery.ui.preview
 
 import com.google.aiedge.gallery.data.AccessTokenData
 import com.google.aiedge.gallery.data.DataStoreRepository
-import com.google.aiedge.gallery.data.LocalModelInfo
+import com.google.aiedge.gallery.data.ImportedModelInfo
 
 class PreviewDataStoreRepository : DataStoreRepository {
   override fun saveTextInputHistory(history: List<String>) {
@@ -42,10 +42,10 @@ class PreviewDataStoreRepository : DataStoreRepository {
     return null
   }
 
-  override fun saveLocalModels(localModels: List<LocalModelInfo>) {
+  override fun saveImportedModels(importedModels: List<ImportedModelInfo>) {
   }
 
-  override fun readLocalModels(): List<LocalModelInfo> {
+  override fun readImportedModels(): List<ImportedModelInfo> {
     return listOf()
   }
 }

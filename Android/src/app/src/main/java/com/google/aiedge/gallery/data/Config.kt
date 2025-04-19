@@ -23,6 +23,7 @@ package com.google.aiedge.gallery.data
  * Each type corresponds to a specific editor widget, such as a slider or a switch.
  */
 enum class ConfigEditorType {
+  LABEL,
   NUMBER_SLIDER,
   BOOLEAN_SWITCH,
   DROPDOWN,
@@ -55,6 +56,19 @@ open class Config(
   open val defaultValue: Any,
   open val valueType: ValueType,
   open val needReinitialization: Boolean = true,
+)
+
+/**
+ * Configuration setting for a label.
+ */
+class LabelConfig(
+  override val key: ConfigKey,
+  override val defaultValue: String = "",
+) : Config(
+  type = ConfigEditorType.LABEL,
+  key = key,
+  defaultValue = defaultValue,
+  valueType = ValueType.STRING
 )
 
 /**
@@ -99,9 +113,11 @@ class SegmentedButtonConfig(
   override val key: ConfigKey,
   override val defaultValue: String,
   val options: List<String>,
+  val allowMultiple: Boolean = false,
 ) : Config(
   type = ConfigEditorType.DROPDOWN,
   key = key,
   defaultValue = defaultValue,
+  // The emitted value will be comma-separated labels when allowMultiple=true.
   valueType = ValueType.STRING,
 )

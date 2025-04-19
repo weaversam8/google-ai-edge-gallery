@@ -19,6 +19,7 @@ package com.google.aiedge.gallery.data
 import android.content.Context
 import com.google.aiedge.gallery.ui.common.chat.PromptTemplate
 import com.google.aiedge.gallery.ui.common.convertValueToTargetType
+import com.google.aiedge.gallery.ui.llmchat.DEFAULT_ACCELERATORS
 import com.google.aiedge.gallery.ui.llmchat.createLlmChatConfigs
 
 data class ModelDataFile(
@@ -28,8 +29,8 @@ data class ModelDataFile(
   val sizeInBytes: Long,
 )
 
-enum class LlmBackend {
-  CPU, GPU
+enum class Accelerator(val label: String) {
+  CPU(label = "CPU"), GPU(label = "GPU")
 }
 
 const val IMPORTS_DIR = "__imports"
@@ -81,14 +82,14 @@ data class Model(
   /** The name of the directory to unzip the model to (if it's a zip file). */
   val unzipDir: String = "",
 
-  /** The preferred backend of the model (only for LLM). */
-  val llmBackend: LlmBackend = LlmBackend.GPU,
+  /** The accelerators the the model can run with. */
+  val accelerators: List<Accelerator> = DEFAULT_ACCELERATORS,
 
   /** The prompt templates for the model (only for LLM). */
   val llmPromptTemplates: List<PromptTemplate> = listOf(),
 
-  /** Whether the model is imported as a local model. */
-  val isLocalModel: Boolean = false,
+  /** Whether the model is imported or not. */
+  val imported: Boolean = false,
 
   // The following fields are managed by the app. Don't need to set manually.
   var taskType: TaskType? = null,
@@ -135,6 +136,12 @@ data class Model(
     ) as Boolean
   }
 
+  fun getStringConfigValue(key: ConfigKey, defaultValue: String = ""): String {
+    return getTypedConfigValue(
+      key = key, valueType = ValueType.STRING, defaultValue = defaultValue
+    ) as String
+  }
+
   fun getExtraDataFile(name: String): ModelDataFile? {
     return extraDataFiles.find { it.name == name }
   }
@@ -147,7 +154,11 @@ data class Model(
 }
 
 /** Data for a imported local model. */
-data class LocalModelInfo(val fileName: String, val fileSize: Long)
+data class ImportedModelInfo(
+  val fileName: String,
+  val fileSize: Long,
+  val defaultValues: Map<String, Any>
+)
 
 enum class ModelDownloadStatusType {
   NOT_DOWNLOADED, PARTIALLY_DOWNLOADED, IN_PROGRESS, UNZIPPING, SUCCEEDED, FAILED,
@@ -165,29 +176,25 @@ data class ModelDownloadStatus(
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Configs.
 
-enum class ConfigKey(val label: String, val id: String) {
-  MAX_TOKENS("Max tokens", id = "max_token"),
-  TOPK("TopK", id = "topk"),
-  TOPP(
-    "TopP",
-    id = "topp"
-  ),
-  TEMPERATURE("Temperature", id = "temperature"),
-  MAX_RESULT_COUNT(
-    "Max result count",
-    id = "max_result_count"
-  ),
-  USE_GPU("Use GPU", id = "use_gpu"),
-  WARM_UP_ITERATIONS(
-    "Warm up iterations",
-    id = "warm_up_iterations"
-  ),
-  BENCHMARK_ITERATIONS(
-    "Benchmark iterations",
-    id = "benchmark_iterations"
-  ),
-  ITERATIONS("Iterations", id = "iterations"),
-  THEME("Theme", id = "theme"),
+enum class ConfigKey(val label: String) {
+  MAX_TOKENS("Max tokens"),
+  TOPK("TopK"),
+  TOPP("TopP"),
+  TEMPERATURE("Temperature"),
+  DEFAULT_MAX_TOKENS("Default max tokens"),
+  DEFAULT_TOPK("Default TopK"),
+  DEFAULT_TOPP("Default TopP"),
+  DEFAULT_TEMPERATURE("Default temperature"),
+  MAX_RESULT_COUNT("Max result count"),
+  USE_GPU("Use GPU"),
+  ACCELERATOR("Accelerator"),
+  COMPATIBLE_ACCELERATORS("Compatible accelerators"),
+  WARM_UP_ITERATIONS("Warm up iterations"),
+  BENCHMARK_ITERATIONS("Benchmark iterations"),
+  ITERATIONS("Iterations"),
+  THEME("Theme"),
+  NAME("Name"),
+  MODEL_TYPE("Model type")
 }
 
 val MOBILENET_CONFIGS: List<Config> = listOf(
@@ -258,7 +265,12 @@ val MODEL_LLM_GEMMA_3_1B_INT4: Model = Model(
   downloadFileName = "gemma3-1b-it-int4.task",
   url = "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.task?download=true",
   sizeInBytes = 554661243L,
-  configs = createLlmChatConfigs(defaultTopK = 64, defaultTopP = 0.95f),
+  accelerators = listOf(Accelerator.CPU, Accelerator.GPU),
+  configs = createLlmChatConfigs(
+    defaultTopK = 64,
+    defaultTopP = 0.95f,
+    accelerators = listOf(Accelerator.CPU, Accelerator.GPU)
+  ),
   info = LLM_CHAT_INFO,
   learnMoreUrl = "https://huggingface.co/litert-community/Gemma3-1B-IT",
   llmPromptTemplates = listOf(
@@ -280,8 +292,13 @@ val MODEL_LLM_DEEPSEEK: Model = Model(
   downloadFileName = "deepseek.task",
   url = "https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B/resolve/main/deepseek_q8_ekv1280.task?download=true",
   sizeInBytes = 1860686856L,
-  llmBackend = LlmBackend.CPU,
-  configs = createLlmChatConfigs(defaultTemperature = 0.6f, defaultTopK = 40, defaultTopP = 0.7f),
+  accelerators = listOf(Accelerator.CPU),
+  configs = createLlmChatConfigs(
+    defaultTemperature = 0.6f,
+    defaultTopK = 40,
+    defaultTopP = 0.7f,
+    accelerators = listOf(Accelerator.CPU)
+  ),
   info = LLM_CHAT_INFO,
   learnMoreUrl = "https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B",
 )

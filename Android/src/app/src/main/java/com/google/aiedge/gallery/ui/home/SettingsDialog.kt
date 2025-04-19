@@ -30,7 +30,7 @@ private val CONFIGS: List<Config> = listOf(
   SegmentedButtonConfig(
     key = ConfigKey.THEME,
     defaultValue = THEME_AUTO,
-    options = listOf(THEME_AUTO, THEME_LIGHT, THEME_DARK)
+    options = listOf(THEME_AUTO, THEME_LIGHT, THEME_DARK),
   )
 )
 

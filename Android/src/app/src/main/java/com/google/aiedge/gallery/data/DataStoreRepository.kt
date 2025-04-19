@@ -47,8 +47,8 @@ interface DataStoreRepository {
   fun readThemeOverride(): String
   fun saveAccessTokenData(accessToken: String, refreshToken: String, expiresAt: Long)
   fun readAccessTokenData(): AccessTokenData?
-  fun saveLocalModels(localModels: List<LocalModelInfo>)
-  fun readLocalModels(): List<LocalModelInfo>
+  fun saveImportedModels(importedModels: List<ImportedModelInfo>)
+  fun readImportedModels(): List<ImportedModelInfo>
 }
 
 /**
@@ -82,8 +82,8 @@ class DefaultDataStoreRepository(
 
     val ACCESS_TOKEN_EXPIRES_AT = longPreferencesKey("access_token_expires_at")
 
-    // Data for all imported local models.
-    val LOCAL_MODELS = stringPreferencesKey("local_models")
+    // Data for all imported models.
+    val IMPORTED_MODELS = stringPreferencesKey("imported_models")
   }
 
   private val keystoreAlias: String = "com_google_aiedge_gallery_access_token_key"
@@ -160,22 +160,22 @@ class DefaultDataStoreRepository(
     }
   }
 
-  override fun saveLocalModels(localModels: List<LocalModelInfo>) {
+  override fun saveImportedModels(importedModels: List<ImportedModelInfo>) {
     runBlocking {
       dataStore.edit { preferences ->
         val gson = Gson()
-        val jsonString = gson.toJson(localModels)
-        preferences[PreferencesKeys.LOCAL_MODELS] = jsonString
+        val jsonString = gson.toJson(importedModels)
+        preferences[PreferencesKeys.IMPORTED_MODELS] = jsonString
       }
     }
   }
 
-  override fun readLocalModels(): List<LocalModelInfo> {
+  override fun readImportedModels(): List<ImportedModelInfo> {
     return runBlocking {
       val preferences = dataStore.data.first()
-      val infosStr = preferences[PreferencesKeys.LOCAL_MODELS] ?: "[]"
+      val infosStr = preferences[PreferencesKeys.IMPORTED_MODELS] ?: "[]"
       val gson = Gson()
-      val listType = object : TypeToken<List<LocalModelInfo>>() {}.type
+      val listType = object : TypeToken<List<ImportedModelInfo>>() {}.type
       gson.fromJson(infosStr, listType)
     }
   }

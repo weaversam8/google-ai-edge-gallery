@@ -54,6 +54,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -71,6 +73,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
@@ -127,6 +130,8 @@ fun HomeScreen(
   val selectedLocalModelFileUri = remember { mutableStateOf<Uri?>(null) }
   val selectedImportedModelInfo = remember { mutableStateOf<ImportedModelInfo?>(null) }
   val coroutineScope = rememberCoroutineScope()
+  val snackbarHostState = remember { SnackbarHostState() }
+  val scope = rememberCoroutineScope()
 
   val tasks = uiState.tasks
   val loadingHfModels = uiState.loadingHfModels
@@ -173,12 +178,16 @@ fun HomeScreen(
       }
     }
   ) { innerPadding ->
-    TaskList(
-      tasks = tasks,
-      navigateToTaskScreen = navigateToTaskScreen,
-      modifier = Modifier.fillMaxSize(),
-      contentPadding = innerPadding,
-    )
+    Box(contentAlignment = Alignment.BottomCenter, modifier = Modifier.fillMaxSize()) {
+      TaskList(
+        tasks = tasks,
+        navigateToTaskScreen = navigateToTaskScreen,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = innerPadding,
+      )
+
+      SnackbarHost(hostState = snackbarHostState, modifier = Modifier.padding(bottom = 16.dp))
+    }
   }
 
   // Settings dialog.
@@ -270,6 +279,11 @@ fun HomeScreen(
               info = it,
             )
             showImportingDialog = false
+
+            // Show a snack bar for successful import.
+            scope.launch {
+              snackbarHostState.showSnackbar("✅ Model imported successfully")
+            }
           })
       }
     }

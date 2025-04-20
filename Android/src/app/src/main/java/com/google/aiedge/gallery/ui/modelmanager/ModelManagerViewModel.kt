@@ -424,6 +424,13 @@ open class ModelManagerViewModel(
   fun addImportedLlmModel(task: Task, info: ImportedModelInfo) {
     Log.d(TAG, "adding imported llm model: $info")
 
+    // Remove duplicated imported model if existed.
+    val modelIndex = task.models.indexOfFirst { info.fileName == it.name && it.imported }
+    if (modelIndex >= 0) {
+      Log.d(TAG, "duplicated imported model found in task. Removing it first")
+      task.models.removeAt(modelIndex)
+    }
+
     // Create model.
     val model = createModelFromImportedModelInfo(info = info, task = task)
     task.models.add(model)
@@ -451,6 +458,11 @@ open class ModelManagerViewModel(
 
     // Add to preference storage.
     val importedModels = dataStoreRepository.readImportedModels().toMutableList()
+    val importedModelIndex = importedModels.indexOfFirst { info.fileName == it.fileName }
+    if (importedModelIndex >= 0) {
+      Log.d(TAG, "duplicated imported model found in preference storage. Removing it first")
+      importedModels.removeAt(importedModelIndex)
+    }
     importedModels.add(info)
     dataStoreRepository.saveImportedModels(importedModels = importedModels)
   }

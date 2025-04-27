@@ -67,6 +67,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
@@ -86,6 +87,8 @@ import com.google.aiedge.gallery.R
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.ui.common.chat.MessageBubbleShape
 import com.google.aiedge.gallery.ui.theme.customColors
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 private val promptTemplateTypes: List<PromptTemplateType> = PromptTemplateType.entries
 private val TAB_TITLES = PromptTemplateType.entries.map { it.label }
@@ -101,6 +104,7 @@ fun PromptTemplatesPanel(
   onSend: (fullPrompt: String) -> Unit,
   modifier: Modifier = Modifier
 ) {
+  val scope = rememberCoroutineScope()
   val uiState by viewModel.uiState.collectAsState()
   val selectedPromptTemplateType = uiState.selectedPromptTemplateType
   val inProgress = uiState.inProgress
@@ -381,7 +385,11 @@ fun PromptTemplatesPanel(
               .fillMaxWidth()
               .clickable {
                 curTextInputContent = prompt
-                showExamplePromptBottomSheet = false
+                scope.launch {
+                  // Give it sometime to show the click effect.
+                  delay(200)
+                  showExamplePromptBottomSheet = false
+                }
               }
               .padding(horizontal = 16.dp, vertical = 8.dp),
           ) {

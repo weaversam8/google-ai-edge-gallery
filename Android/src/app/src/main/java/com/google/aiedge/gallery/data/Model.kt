@@ -19,7 +19,6 @@ package com.google.aiedge.gallery.data
 import android.content.Context
 import com.google.aiedge.gallery.ui.common.chat.PromptTemplate
 import com.google.aiedge.gallery.ui.common.convertValueToTargetType
-import com.google.aiedge.gallery.ui.llmchat.DEFAULT_ACCELERATORS
 import com.google.aiedge.gallery.ui.llmchat.createLlmChatConfigs
 
 data class ModelDataFile(
@@ -81,9 +80,6 @@ data class Model(
 
   /** The name of the directory to unzip the model to (if it's a zip file). */
   val unzipDir: String = "",
-
-  /** The accelerators the the model can run with. */
-  val accelerators: List<Accelerator> = DEFAULT_ACCELERATORS,
 
   /** The prompt templates for the model (only for LLM). */
   val llmPromptTemplates: List<PromptTemplate> = listOf(),
@@ -243,7 +239,9 @@ val MODEL_LLM_GEMMA_2B_GPU_INT4: Model = Model(
   downloadFileName = "gemma-2b-it-gpu-int4.bin",
   url = "https://storage.googleapis.com/tfweb/app_gallery_models/gemma-2b-it-gpu-int4.bin",
   sizeInBytes = 1354301440L,
-  configs = createLlmChatConfigs(),
+  configs = createLlmChatConfigs(
+    accelerators = listOf(Accelerator.GPU)
+  ),
   showBenchmarkButton = false,
   info = LLM_CHAT_INFO,
   learnMoreUrl = "https://huggingface.co/litert-community",
@@ -254,7 +252,9 @@ val MODEL_LLM_GEMMA_2_2B_GPU_INT8: Model = Model(
   downloadFileName = "gemma2-2b-it-gpu-int8.bin",
   url = "https://storage.googleapis.com/tfweb/app_gallery_models/gemma2-2b-it-gpu-int8.bin",
   sizeInBytes = 2627141632L,
-  configs = createLlmChatConfigs(),
+  configs = createLlmChatConfigs(
+    accelerators = listOf(Accelerator.GPU)
+  ),
   showBenchmarkButton = false,
   info = LLM_CHAT_INFO,
   learnMoreUrl = "https://huggingface.co/litert-community",
@@ -265,7 +265,6 @@ val MODEL_LLM_GEMMA_3_1B_INT4: Model = Model(
   downloadFileName = "gemma3-1b-it-int4.task",
   url = "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.task?download=true",
   sizeInBytes = 554661243L,
-  accelerators = listOf(Accelerator.CPU, Accelerator.GPU),
   configs = createLlmChatConfigs(
     defaultTopK = 64,
     defaultTopP = 0.95f,
@@ -293,7 +292,6 @@ val MODEL_LLM_DEEPSEEK: Model = Model(
   downloadFileName = "deepseek.task",
   url = "https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B/resolve/main/deepseek_q8_ekv1280.task?download=true",
   sizeInBytes = 1860686856L,
-  accelerators = listOf(Accelerator.CPU),
   configs = createLlmChatConfigs(
     defaultTemperature = 0.6f,
     defaultTopK = 40,

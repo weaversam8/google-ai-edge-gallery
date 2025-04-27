@@ -36,7 +36,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -80,8 +83,10 @@ fun LlmSingleTurnScreen(
   val selectedModel = modelManagerUiState.selectedModel
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
+  var navigatingUp by remember { mutableStateOf(false) }
 
   val handleNavigateUp = {
+    navigatingUp = true
     navigateUp()
 
     // clean up all models.
@@ -100,12 +105,14 @@ fun LlmSingleTurnScreen(
   // Initialize model when model/download state changes.
   val curDownloadStatus = modelManagerUiState.modelDownloadStatus[selectedModel.name]
   LaunchedEffect(curDownloadStatus, selectedModel.name) {
-    if (curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
-      Log.d(
-        TAG,
-        "Initializing model '${selectedModel.name}' from LlmsingleTurnScreen launched effect"
-      )
-      modelManagerViewModel.initializeModel(context, task = task, model = selectedModel)
+    if (!navigatingUp) {
+      if (curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
+        Log.d(
+          TAG,
+          "Initializing model '${selectedModel.name}' from LlmsingleTurnScreen launched effect"
+        )
+        modelManagerViewModel.initializeModel(context, task = task, model = selectedModel)
+      }
     }
   }
 

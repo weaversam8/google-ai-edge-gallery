@@ -20,6 +20,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,8 +73,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,6 +115,9 @@ fun PromptTemplatesPanel(
     }
   }
   val clipboardManager = LocalClipboardManager.current
+  val focusRequester = remember { FocusRequester() }
+  val focusManager = LocalFocusManager.current
+  val interactionSource = remember { MutableInteractionSource() }
   val expandedStates = remember { mutableStateMapOf<String, Boolean>() }
 
   // Update input editor values when prompt template changes.
@@ -127,20 +134,30 @@ fun PromptTemplatesPanel(
 
   Column(modifier = modifier) {
     // Scrollable tab row for all prompt templates.
-    PrimaryScrollableTabRow(selectedTabIndex = selectedTabIndex) {
+    PrimaryScrollableTabRow(
+      selectedTabIndex = selectedTabIndex
+    ) {
       TAB_TITLES.forEachIndexed { index, title ->
-        Tab(selected = selectedTabIndex == index, onClick = {
-          // Clear input when tab changes.
-          curTextInputContent = ""
-          // Reset full prompt switch.
-          inputEditorValues[FULL_PROMPT_SWITCH_KEY] = false
+        Tab(selected = selectedTabIndex == index,
+          enabled = !inProgress,
+          onClick = {
+            // Clear input when tab changes.
+            curTextInputContent = ""
+            // Reset full prompt switch.
+            inputEditorValues[FULL_PROMPT_SWITCH_KEY] = false
 
-          selectedTabIndex = index
-          viewModel.selectPromptTemplate(
-            model = model,
-            promptTemplateType = promptTemplateTypes[index]
-          )
-        }, text = { Text(text = title) })
+            selectedTabIndex = index
+            viewModel.selectPromptTemplate(
+              model = model,
+              promptTemplateType = promptTemplateTypes[index]
+            )
+          },
+          text = {
+            Text(
+              text = title,
+              modifier = Modifier.alpha(if (inProgress) 0.5f else 1f)
+            )
+          })
       }
     }
 
@@ -178,6 +195,13 @@ fun PromptTemplatesPanel(
           modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .clickable(
+              interactionSource = interactionSource,
+              indication = null // Disable the ripple effect
+            ) {
+              // Request focus on the TextField when the Column is clicked
+              focusRequester.requestFocus()
+            }
         ) {
           if (inputEditorValues[FULL_PROMPT_SWITCH_KEY] as Boolean) {
             Text(
@@ -186,7 +210,7 @@ fun PromptTemplatesPanel(
               modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .padding(bottom = 32.dp)
+                .padding(bottom = 40.dp)
                 .clip(MessageBubbleShape(radius = bubbleBorderRadius))
                 .background(MaterialTheme.customColors.agentBubbleBgColor)
                 .padding(16.dp)
@@ -205,7 +229,9 @@ fun PromptTemplatesPanel(
               ),
               textStyle = MaterialTheme.typography.bodyMedium,
               placeholder = { Text("Enter content") },
-              modifier = Modifier.padding(bottom = 32.dp)
+              modifier = Modifier
+                .padding(bottom = 40.dp)
+                .focusRequester(focusRequester)
             )
           }
         }
@@ -301,6 +327,7 @@ fun PromptTemplatesPanel(
           OutlinedIconButton(
             enabled = !inProgress && curTextInputContent.isNotEmpty(),
             onClick = {
+              focusManager.clearFocus()
               onSend(fullPrompt.text)
             },
             colors = IconButtonDefaults.iconButtonColors(

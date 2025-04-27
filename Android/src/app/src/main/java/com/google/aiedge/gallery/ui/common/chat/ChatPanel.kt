@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -334,7 +335,10 @@ fun ChatPanel(
                     is ChatMessageBenchmarkResult -> MessageBodyBenchmark(message = message)
 
                     // Benchmark LLM result.
-                    is ChatMessageBenchmarkLlmResult -> MessageBodyBenchmarkLlm(message = message)
+                    is ChatMessageBenchmarkLlmResult -> MessageBodyBenchmarkLlm(
+                      message = message,
+                      modifier = Modifier.wrapContentWidth()
+                    )
 
                     else -> {}
                   }
@@ -346,7 +350,7 @@ fun ChatPanel(
                   ) {
                     LatencyText(message = message)
                     // A button to show stats for the LLM message.
-                    if (selectedModel.taskType == TaskType.LLM_CHAT && message is ChatMessageText
+                    if (task.type == TaskType.LLM_CHAT && message is ChatMessageText
                       // This means we only want to show the action button when the message is done
                       // generating, at which point the latency will be set.
                       && message.latencyMs >= 0
@@ -403,21 +407,17 @@ fun ChatPanel(
                     }
 
                     // Benchmark button
-//                    if (selectedModel.showBenchmarkButton) {
-//                      MessageActionButton(
-//                        label = stringResource(R.string.benchmark),
-//                        icon = Icons.Outlined.Timer,
-//                        onClick = {
-//                          if (selectedModel.taskType == TaskType.LLM_CHAT) {
-//                            onBenchmarkClicked(selectedModel, message, 0, 0)
-//                          } else {
-//                            showBenchmarkConfigsDialog = true
-//                            benchmarkMessage.value = message
-//                          }
-//                        },
-//                        enabled = !uiState.inProgress
-//                      )
-//                    }
+                    if (selectedModel.showBenchmarkButton) {
+                      MessageActionButton(
+                        label = stringResource(R.string.benchmark),
+                        icon = Icons.Outlined.Timer,
+                        onClick = {
+                          showBenchmarkConfigsDialog = true
+                          benchmarkMessage.value = message
+                        },
+                        enabled = !uiState.inProgress
+                      )
+                    }
                   }
                 }
               }
@@ -443,7 +443,7 @@ fun ChatPanel(
     // Chat input
     when (chatInputType) {
       ChatInputType.TEXT -> {
-        val isLlmTask = selectedModel.taskType == TaskType.LLM_CHAT
+        val isLlmTask = task.type == TaskType.LLM_CHAT
         val notLlmStartScreen = !(messages.size == 1 && messages[0] is ChatMessagePromptTemplates)
         MessageInputText(
           modelManagerViewModel = modelManagerViewModel,

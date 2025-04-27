@@ -181,7 +181,5 @@ fun ModelNameAndStatus(
           .padding(top = 2.dp),
       )
     }
-
-
   }
 }

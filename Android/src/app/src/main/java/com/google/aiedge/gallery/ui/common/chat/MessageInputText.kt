@@ -70,7 +70,6 @@ import com.google.aiedge.gallery.ui.theme.GalleryTheme
  * This function renders a row containing a text field for message input and a send button.
  * It handles message composition, input validation, and sending messages.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessageInputText(
   modelManagerViewModel: ModelManagerViewModel,
@@ -190,7 +189,7 @@ fun MessageInputText(
             Icons.AutoMirrored.Rounded.Send,
             contentDescription = "",
             modifier = Modifier.offset(x = 2.dp),
-            tint = if (inProgress) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.primary
+            tint = MaterialTheme.colorScheme.primary
           )
         }
       }

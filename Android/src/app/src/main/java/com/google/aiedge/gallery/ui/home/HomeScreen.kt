@@ -73,7 +73,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
@@ -91,7 +90,6 @@ import com.google.aiedge.gallery.data.AppBarAction
 import com.google.aiedge.gallery.data.AppBarActionType
 import com.google.aiedge.gallery.data.ConfigKey
 import com.google.aiedge.gallery.data.ImportedModelInfo
-import com.google.aiedge.gallery.data.TASK_LLM_CHAT
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.ui.common.TaskIcon
 import com.google.aiedge.gallery.ui.common.getTaskBgColor
@@ -275,7 +273,6 @@ fun HomeScreen(
           onDismiss = { showImportingDialog = false },
           onDone = {
             modelManagerViewModel.addImportedLlmModel(
-              task = TASK_LLM_CHAT,
               info = it,
             )
             showImportingDialog = false

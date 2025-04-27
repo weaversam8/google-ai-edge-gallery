@@ -92,15 +92,13 @@ data class Model(
   val imported: Boolean = false,
 
   // The following fields are managed by the app. Don't need to set manually.
-  var taskType: TaskType? = null,
   var instance: Any? = null,
   var initializing: Boolean = false,
   var configValues: Map<String, Any> = mapOf(),
   var totalBytes: Long = 0L,
   var accessToken: String? = null,
 ) {
-  fun preProcess(task: Task) {
-    this.taskType = task.type
+  fun preProcess() {
     val configValues: MutableMap<String, Any> = mutableMapOf()
     for (config in this.configs) {
       configValues[config.key.label] = config.defaultValue
@@ -246,6 +244,7 @@ val MODEL_LLM_GEMMA_2B_GPU_INT4: Model = Model(
   url = "https://storage.googleapis.com/tfweb/app_gallery_models/gemma-2b-it-gpu-int4.bin",
   sizeInBytes = 1354301440L,
   configs = createLlmChatConfigs(),
+  showBenchmarkButton = false,
   info = LLM_CHAT_INFO,
   learnMoreUrl = "https://huggingface.co/litert-community",
 )
@@ -256,6 +255,7 @@ val MODEL_LLM_GEMMA_2_2B_GPU_INT8: Model = Model(
   url = "https://storage.googleapis.com/tfweb/app_gallery_models/gemma2-2b-it-gpu-int8.bin",
   sizeInBytes = 2627141632L,
   configs = createLlmChatConfigs(),
+  showBenchmarkButton = false,
   info = LLM_CHAT_INFO,
   learnMoreUrl = "https://huggingface.co/litert-community",
 )
@@ -271,6 +271,7 @@ val MODEL_LLM_GEMMA_3_1B_INT4: Model = Model(
     defaultTopP = 0.95f,
     accelerators = listOf(Accelerator.CPU, Accelerator.GPU)
   ),
+  showBenchmarkButton = false,
   info = LLM_CHAT_INFO,
   learnMoreUrl = "https://huggingface.co/litert-community/Gemma3-1B-IT",
   llmPromptTemplates = listOf(
@@ -299,6 +300,7 @@ val MODEL_LLM_DEEPSEEK: Model = Model(
     defaultTopP = 0.7f,
     accelerators = listOf(Accelerator.CPU)
   ),
+  showBenchmarkButton = false,
   info = LLM_CHAT_INFO,
   learnMoreUrl = "https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B",
 )
@@ -389,7 +391,7 @@ val MODELS_IMAGE_CLASSIFICATION: MutableList<Model> = mutableListOf(
   MODEL_IMAGE_CLASSIFICATION_MOBILENET_V2,
 )
 
-val MODELS_LLM_CHAT: MutableList<Model> = mutableListOf(
+val MODELS_LLM: MutableList<Model> = mutableListOf(
   MODEL_LLM_GEMMA_2B_GPU_INT4,
   MODEL_LLM_GEMMA_2_2B_GPU_INT8,
   MODEL_LLM_GEMMA_3_1B_INT4,

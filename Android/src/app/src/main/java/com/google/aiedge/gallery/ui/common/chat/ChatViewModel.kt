@@ -20,13 +20,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.Task
+import com.google.aiedge.gallery.ui.common.processLlmResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 private const val TAG = "AGChatViewModel"
-private const val START_THINKING = "***Thinking...***"
-private const val DONE_THINKING = "***Done thinking***"
 
 data class ChatUiState(
   /**
@@ -121,26 +120,7 @@ open class ChatViewModel(val task: Task) : ViewModel() {
     if (newMessages.size > 0) {
       val lastMessage = newMessages.last()
       if (lastMessage is ChatMessageText) {
-        var newContent = "${lastMessage.content}${partialContent}"
-        // TODO: special handling for deepseek to remove the <think> tag.
-
-        // Add "thinking" and "done thinking" around the thinking content.
-        newContent = newContent
-          .replace("<think>", "$START_THINKING\n")
-          .replace("</think>", "\n$DONE_THINKING")
-
-        // Remove empty thinking content.
-        val endThinkingIndex = newContent.indexOf(DONE_THINKING)
-        if (endThinkingIndex >= 0) {
-          val thinkingContent =
-            newContent.substring(0, endThinkingIndex + DONE_THINKING.length)
-              .replace(START_THINKING, "")
-              .replace(DONE_THINKING, "")
-          if (thinkingContent.isBlank()) {
-            newContent = newContent.substring(endThinkingIndex + DONE_THINKING.length)
-          }
-        }
-
+        val newContent = processLlmResponse(response = "${lastMessage.content}${partialContent}")
         val newLastMessage = ChatMessageText(
           content = newContent,
           side = lastMessage.side,

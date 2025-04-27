@@ -63,7 +63,8 @@ fun ModelSelector(
   ) {
     Box(
       modifier = Modifier
-        .fillMaxWidth().padding(bottom = 8.dp),
+        .fillMaxWidth()
+        .padding(bottom = 8.dp),
       contentAlignment = Alignment.Center
     ) {
       // Model row.
@@ -134,7 +135,12 @@ fun ModelSelector(
 
         // Force to re-initialize the model with the new configs.
         if (needReinitialization) {
-          modelManagerViewModel.initializeModel(context = context, model = model, force = true)
+          modelManagerViewModel.initializeModel(
+            context = context,
+            task = task,
+            model = model,
+            force = true
+          )
         }
 
         // Notify.

@@ -29,6 +29,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.google.aiedge.gallery.data.Config
 import com.google.aiedge.gallery.data.Model
+import com.google.aiedge.gallery.data.TASKS
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.data.ValueType
 import com.google.aiedge.gallery.ui.common.chat.ChatMessageBenchmarkResult
@@ -56,6 +57,9 @@ private val STATS = listOf(
 interface LatencyProvider {
   val latencyMs: Float
 }
+
+private const val START_THINKING = "***Thinking...***"
+private const val DONE_THINKING = "***Done thinking***"
 
 /** Format the bytes into a human-readable format. */
 fun Long.humanReadableSize(si: Boolean = true, extraDecimalForGbAndAbove: Boolean = false): String {
@@ -451,4 +455,34 @@ fun cleanUpMediapipeTaskErrorMessage(message: String): String {
     return message.substring(0, index)
   }
   return message
+}
+
+fun processTasks() {
+  for ((index, task) in TASKS.withIndex()) {
+    task.index = index
+    for (model in task.models) {
+      model.preProcess()
+    }
+  }
+}
+
+fun processLlmResponse(response: String): String {
+  // Add "thinking" and "done thinking" around the thinking content.
+  var newContent = response
+    .replace("<think>", "$START_THINKING\n")
+    .replace("</think>", "\n$DONE_THINKING")
+
+  // Remove empty thinking content.
+  val endThinkingIndex = newContent.indexOf(DONE_THINKING)
+  if (endThinkingIndex >= 0) {
+    val thinkingContent =
+      newContent.substring(0, endThinkingIndex + DONE_THINKING.length)
+        .replace(START_THINKING, "")
+        .replace(DONE_THINKING, "")
+    if (thinkingContent.isBlank()) {
+      newContent = newContent.substring(endThinkingIndex + DONE_THINKING.length)
+    }
+  }
+
+  return newContent
 }

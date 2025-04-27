@@ -187,6 +187,5 @@ fun GalleryTopAppBar(
         else -> {}
       }
     }
-
   )
 }

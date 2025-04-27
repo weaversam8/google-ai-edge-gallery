@@ -116,6 +116,7 @@ data class CustomColors(
   val userBubbleBgColor: Color = Color.Transparent,
   val agentBubbleBgColor: Color = Color.Transparent,
   val linkColor: Color = Color.Transparent,
+  val successColor: Color = Color.Transparent,
 )
 
 val LocalCustomColors = staticCompositionLocalOf { CustomColors() }
@@ -145,6 +146,7 @@ val lightCustomColors = CustomColors(
   agentBubbleBgColor = Color(0xFFe9eef6),
   userBubbleBgColor = Color(0xFF32628D),
   linkColor = Color(0xFF32628D),
+  successColor = Color(0xff3d860b),
 )
 
 val darkCustomColors = CustomColors(
@@ -172,6 +174,7 @@ val darkCustomColors = CustomColors(
   agentBubbleBgColor = Color(0xFF1b1c1d),
   userBubbleBgColor = Color(0xFF1f3760),
   linkColor = Color(0xFF9DCAFC),
+  successColor = Color(0xFFA1CE83),
 )
 
 val MaterialTheme.customColors: CustomColors

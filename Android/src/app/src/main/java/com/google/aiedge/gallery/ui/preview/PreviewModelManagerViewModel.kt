@@ -34,7 +34,7 @@ class PreviewModelManagerViewModel(context: Context) :
     for ((index, task) in ALL_PREVIEW_TASKS.withIndex()) {
       task.index = index
       for (model in task.models) {
-        model.preProcess(task = task)
+        model.preProcess()
       }
     }
 

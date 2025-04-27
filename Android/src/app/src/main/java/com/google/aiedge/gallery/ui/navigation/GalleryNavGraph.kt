@@ -46,6 +46,7 @@ import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.TASK_IMAGE_CLASSIFICATION
 import com.google.aiedge.gallery.data.TASK_IMAGE_GENERATION
 import com.google.aiedge.gallery.data.TASK_LLM_CHAT
+import com.google.aiedge.gallery.data.TASK_LLM_SINGLE_TURN
 import com.google.aiedge.gallery.data.TASK_TEXT_CLASSIFICATION
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.data.TaskType
@@ -58,6 +59,8 @@ import com.google.aiedge.gallery.ui.imagegeneration.ImageGenerationDestination
 import com.google.aiedge.gallery.ui.imagegeneration.ImageGenerationScreen
 import com.google.aiedge.gallery.ui.llmchat.LlmChatDestination
 import com.google.aiedge.gallery.ui.llmchat.LlmChatScreen
+import com.google.aiedge.gallery.ui.llmsingleturn.LlmSingleTurnDestination
+import com.google.aiedge.gallery.ui.llmsingleturn.LlmSingleTurnScreen
 import com.google.aiedge.gallery.ui.modelmanager.ModelManager
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.aiedge.gallery.ui.textclassification.TextClassificationDestination
@@ -131,7 +134,7 @@ fun GalleryNavHost(
         task = curPickedTask,
         onModelClicked = { model ->
           navigateToTaskScreen(
-            navController = navController, taskType = model.taskType!!, model = model
+            navController = navController, taskType = curPickedTask.type, model = model
           )
         },
         navigateUp = { showModelManager = false })
@@ -220,6 +223,24 @@ fun GalleryNavHost(
         )
       }
     }
+
+    // LLMm single turn.
+    composable(
+      route = "${LlmSingleTurnDestination.route}/{modelName}",
+      arguments = listOf(navArgument("modelName") { type = NavType.StringType }),
+      enterTransition = { slideEnter() },
+      exitTransition = { slideExit() },
+    ) {
+      getModelFromNavigationParam(it, TASK_LLM_SINGLE_TURN)?.let { defaultModel ->
+        modelManagerViewModel.selectModel(defaultModel)
+
+        LlmSingleTurnScreen(
+          modelManagerViewModel = modelManagerViewModel,
+          navigateUp = { navController.navigateUp() },
+        )
+      }
+    }
+
   }
 
   // Handle incoming intents for deep links
@@ -231,9 +252,10 @@ fun GalleryNavHost(
     if (data.toString().startsWith("com.google.aiedge.gallery://model/")) {
       val modelName = data.pathSegments.last()
       getModelByName(modelName)?.let { model ->
+        // TODO(jingjin): need to show a list of possible tasks for this model.
         navigateToTaskScreen(
           navController = navController,
-          taskType = model.taskType!!,
+          taskType = TaskType.LLM_CHAT,
           model = model
         )
       }
@@ -249,6 +271,7 @@ fun navigateToTaskScreen(
     TaskType.TEXT_CLASSIFICATION -> navController.navigate("${TextClassificationDestination.route}/${modelName}")
     TaskType.IMAGE_CLASSIFICATION -> navController.navigate("${ImageClassificationDestination.route}/${modelName}")
     TaskType.LLM_CHAT -> navController.navigate("${LlmChatDestination.route}/${modelName}")
+    TaskType.LLM_SINGLE_TURN -> navController.navigate("${LlmSingleTurnDestination.route}/${modelName}")
     TaskType.IMAGE_GENERATION -> navController.navigate("${ImageGenerationDestination.route}/${modelName}")
     TaskType.TEST_TASK_1 -> {}
     TaskType.TEST_TASK_2 -> {}

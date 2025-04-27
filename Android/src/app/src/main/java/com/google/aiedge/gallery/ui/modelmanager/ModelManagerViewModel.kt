@@ -40,6 +40,7 @@ import com.google.aiedge.gallery.data.ModelDownloadStatus
 import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.data.TASKS
 import com.google.aiedge.gallery.data.TASK_LLM_CHAT
+import com.google.aiedge.gallery.data.TASK_LLM_SINGLE_TURN
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.data.TaskType
 import com.google.aiedge.gallery.data.ValueType
@@ -175,9 +176,13 @@ open class ModelManagerViewModel(
 
         // Kick off downloads for these models .
         withContext(Dispatchers.Main) {
+          val tokenStatusAndData = getTokenStatusAndData()
           for (info in inProgressWorkInfos) {
             val model: Model? = getModelByName(info.modelName)
             if (model != null) {
+              if (tokenStatusAndData.status == TokenStatus.NOT_EXPIRED && tokenStatusAndData.data != null) {
+                model.accessToken = tokenStatusAndData.data.accessToken
+              }
               Log.d(TAG, "Sending a new download request for '${model.name}'")
               downloadRepository.downloadModel(
                 model, onStatusUpdated = this@ModelManagerViewModel::setDownloadStatus
@@ -233,11 +238,13 @@ open class ModelManagerViewModel(
 
     // Delete model from the list if model is imported as a local model.
     if (model.imported) {
-      val index = task.models.indexOf(model)
-      if (index >= 0) {
-        task.models.removeAt(index)
+      for (curTask in TASKS) {
+        val index = curTask.models.indexOf(model)
+        if (index >= 0) {
+          curTask.models.removeAt(index)
+        }
+        curTask.updateTrigger.value = System.currentTimeMillis()
       }
-      task.updateTrigger.value = System.currentTimeMillis()
       curModelDownloadStatus.remove(model.name)
 
       // Update preference.
@@ -252,7 +259,7 @@ open class ModelManagerViewModel(
     _uiState.update { newUiState }
   }
 
-  fun initializeModel(context: Context, model: Model, force: Boolean = false) {
+  fun initializeModel(context: Context, task: Task, model: Model, force: Boolean = false) {
     viewModelScope.launch(Dispatchers.Default) {
       // Skip if initialized already.
       if (!force && uiState.value.modelInitializationStatus[model.name]?.status == ModelInitializationStatusType.INITIALIZED) {
@@ -267,7 +274,7 @@ open class ModelManagerViewModel(
       }
 
       // Clean up.
-      cleanupModel(model = model)
+      cleanupModel(task = task, model = model)
 
       // Start initialization.
       Log.d(TAG, "Initializing model '${model.name}'...")
@@ -301,7 +308,7 @@ open class ModelManagerViewModel(
           )
         }
       }
-      when (model.taskType) {
+      when (task.type) {
         TaskType.TEXT_CLASSIFICATION -> TextClassificationModelHelper.initialize(
           context = context,
           model = model,
@@ -320,24 +327,33 @@ open class ModelManagerViewModel(
           onDone = onDone,
         )
 
+        TaskType.LLM_SINGLE_TURN -> LlmChatModelHelper.initialize(
+          context = context,
+          model = model,
+          onDone = onDone,
+        )
+
         TaskType.IMAGE_GENERATION -> ImageGenerationModelHelper.initialize(
           context = context, model = model, onDone = onDone
         )
 
-        else -> {}
+        TaskType.TEST_TASK_1 -> {}
+        TaskType.TEST_TASK_2 -> {}
       }
     }
   }
 
-  fun cleanupModel(model: Model) {
+  fun cleanupModel(task: Task, model: Model) {
     if (model.instance != null) {
       Log.d(TAG, "Cleaning up model '${model.name}'...")
-      when (model.taskType) {
+      when (task.type) {
         TaskType.TEXT_CLASSIFICATION -> TextClassificationModelHelper.cleanUp(model = model)
         TaskType.IMAGE_CLASSIFICATION -> ImageClassificationModelHelper.cleanUp(model = model)
         TaskType.LLM_CHAT -> LlmChatModelHelper.cleanUp(model = model)
+        TaskType.LLM_SINGLE_TURN -> LlmChatModelHelper.cleanUp(model = model)
         TaskType.IMAGE_GENERATION -> ImageGenerationModelHelper.cleanUp(model = model)
-        else -> {}
+        TaskType.TEST_TASK_1 -> {}
+        TaskType.TEST_TASK_2 -> {}
       }
       model.instance = null
       model.initializing = false
@@ -421,10 +437,11 @@ open class ModelManagerViewModel(
     return connection.responseCode
   }
 
-  fun addImportedLlmModel(task: Task, info: ImportedModelInfo) {
+  fun addImportedLlmModel(info: ImportedModelInfo) {
     Log.d(TAG, "adding imported llm model: $info")
 
     // Remove duplicated imported model if existed.
+    val task = TASK_LLM_CHAT
     val modelIndex = task.models.indexOfFirst { info.fileName == it.name && it.imported }
     if (modelIndex >= 0) {
       Log.d(TAG, "duplicated imported model found in task. Removing it first")
@@ -455,6 +472,9 @@ open class ModelManagerViewModel(
       )
     }
     task.updateTrigger.value = System.currentTimeMillis()
+    // Also need to update single turn task.
+    TASK_LLM_SINGLE_TURN.updateTrigger.value = System.currentTimeMillis()
+
 
     // Add to preference storage.
     val importedModels = dataStoreRepository.readImportedModels().toMutableList()
@@ -630,33 +650,26 @@ open class ModelManagerViewModel(
 
   private fun createModelFromImportedModelInfo(info: ImportedModelInfo, task: Task): Model {
     val accelerators: List<Accelerator> = (convertValueToTargetType(
-      info.defaultValues[ConfigKey.COMPATIBLE_ACCELERATORS.label]!!,
-      ValueType.STRING
-    ) as String)
-      .split(",")
-      .mapNotNull { acceleratorLabel ->
-        when (acceleratorLabel.trim()) {
-          Accelerator.GPU.label -> Accelerator.GPU
-          Accelerator.CPU.label -> Accelerator.CPU
-          else -> null // Ignore unknown accelerator labels
-        }
+      info.defaultValues[ConfigKey.COMPATIBLE_ACCELERATORS.label]!!, ValueType.STRING
+    ) as String).split(",").mapNotNull { acceleratorLabel ->
+      when (acceleratorLabel.trim()) {
+        Accelerator.GPU.label -> Accelerator.GPU
+        Accelerator.CPU.label -> Accelerator.CPU
+        else -> null // Ignore unknown accelerator labels
       }
+    }
     val configs: List<Config> = createLlmChatConfigs(
       defaultMaxToken = convertValueToTargetType(
-        info.defaultValues[ConfigKey.DEFAULT_MAX_TOKENS.label]!!,
-        ValueType.INT
+        info.defaultValues[ConfigKey.DEFAULT_MAX_TOKENS.label]!!, ValueType.INT
       ) as Int,
       defaultTopK = convertValueToTargetType(
-        info.defaultValues[ConfigKey.DEFAULT_TOPK.label]!!,
-        ValueType.INT
+        info.defaultValues[ConfigKey.DEFAULT_TOPK.label]!!, ValueType.INT
       ) as Int,
       defaultTopP = convertValueToTargetType(
-        info.defaultValues[ConfigKey.DEFAULT_TOPP.label]!!,
-        ValueType.FLOAT
+        info.defaultValues[ConfigKey.DEFAULT_TOPP.label]!!, ValueType.FLOAT
       ) as Float,
       defaultTemperature = convertValueToTargetType(
-        info.defaultValues[ConfigKey.DEFAULT_TEMPERATURE.label]!!,
-        ValueType.FLOAT
+        info.defaultValues[ConfigKey.DEFAULT_TEMPERATURE.label]!!, ValueType.FLOAT
       ) as Float,
       accelerators = accelerators,
     )
@@ -666,9 +679,10 @@ open class ModelManagerViewModel(
       configs = configs,
       sizeInBytes = info.fileSize,
       downloadFileName = "$IMPORTS_DIR/${info.fileName}",
+      showBenchmarkButton = false,
       imported = true,
     )
-    model.preProcess(task = task)
+    model.preProcess()
 
     return model
   }
@@ -741,7 +755,7 @@ open class ModelManagerViewModel(
               val task = TASKS.find { it.type.label == hfModel.task }
               val model = hfModel.toModel()
               if (task != null && task.models.find { it.hfModelId == model.hfModelId } == null) {
-                model.preProcess(task = task)
+                model.preProcess()
                 Log.d(TAG, "AG model: $model")
                 task.models.add(model)
 

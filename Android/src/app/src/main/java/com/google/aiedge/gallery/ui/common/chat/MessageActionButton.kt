@@ -48,15 +48,16 @@ fun MessageActionButton(
   label: String,
   icon: ImageVector,
   onClick: () -> Unit,
+  modifier: Modifier = Modifier,
   enabled: Boolean = true
 ) {
-  val modifier = Modifier
+  val curModifier = modifier
     .padding(top = 4.dp)
     .clip(CircleShape)
     .background(if (enabled) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
   val alpha: Float = if (enabled) 1.0f else 0.3f
   Row(
-    modifier = if (enabled) modifier.clickable { onClick() } else modifier,
+    modifier = if (enabled) curModifier.clickable { onClick() } else modifier,
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Icon(

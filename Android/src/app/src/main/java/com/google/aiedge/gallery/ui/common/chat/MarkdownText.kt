@@ -45,7 +45,7 @@ fun MarkdownText(
     ProvideTextStyle(
       value = TextStyle(
         fontSize = fontSize,
-        lineHeight = fontSize * 1.2,
+        lineHeight = fontSize * 1.4,
       )
     ) {
       RichText(

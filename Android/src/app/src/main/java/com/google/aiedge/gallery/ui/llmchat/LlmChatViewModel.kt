@@ -32,7 +32,7 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "AGLlmChatViewModel"
 private val STATS = listOf(
-  Stat(id = "time_to_first_token", label = "Time to 1st token", unit = "sec"),
+  Stat(id = "time_to_first_token", label = "1st token", unit = "sec"),
   Stat(id = "prefill_speed", label = "Prefill speed", unit = "tokens/s"),
   Stat(id = "decode_speed", label = "Decode speed", unit = "tokens/s"),
   Stat(id = "latency", label = "Latency", unit = "sec")

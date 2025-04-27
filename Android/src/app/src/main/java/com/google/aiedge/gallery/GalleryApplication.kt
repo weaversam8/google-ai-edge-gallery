@@ -23,7 +23,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.aiedge.gallery.data.AppContainer
 import com.google.aiedge.gallery.data.DefaultAppContainer
-import com.google.aiedge.gallery.data.TASKS
+import com.google.aiedge.gallery.ui.common.processTasks
 import com.google.aiedge.gallery.ui.theme.ThemeSettings
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_gallery_preferences")
@@ -36,12 +36,7 @@ class GalleryApplication : Application() {
     super.onCreate()
 
     // Process tasks.
-    for ((index, task) in TASKS.withIndex()) {
-      task.index = index
-      for (model in task.models) {
-        model.preProcess(task = task)
-      }
-    }
+    processTasks()
 
     container = DefaultAppContainer(this, dataStore)
 

@@ -18,9 +18,11 @@ package com.google.aiedge.gallery.data
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material.icons.rounded.ImageSearch
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.google.aiedge.gallery.R
 
@@ -30,6 +32,7 @@ enum class TaskType(val label: String) {
   IMAGE_CLASSIFICATION("Image Classification"),
   IMAGE_GENERATION("Image Generation"),
   LLM_CHAT("LLM Chat"),
+  LLM_SINGLE_TURN("LLM Use Cases"),
 
   TEST_TASK_1("Test task 1"),
   TEST_TASK_2("Test task 2")
@@ -67,7 +70,7 @@ data class Task(
   // The following fields are managed by the app. Don't need to set manually.
   var index: Int = -1,
 
-  val updateTrigger: MutableState<Long> = mutableStateOf(0)
+  val updateTrigger: MutableState<Long> = mutableLongStateOf(0)
 )
 
 val TASK_TEXT_CLASSIFICATION = Task(
@@ -87,9 +90,19 @@ val TASK_IMAGE_CLASSIFICATION = Task(
 
 val TASK_LLM_CHAT = Task(
   type = TaskType.LLM_CHAT,
-  iconVectorResourceId = R.drawable.chat_spark,
-  models = MODELS_LLM_CHAT,
-  description = "Chat? with a on-device large language model",
+  icon = Icons.Outlined.Forum,
+  models = MODELS_LLM,
+  description = "Chat with a on-device large language model",
+  docUrl = "https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android",
+  sourceCodeUrl = "https://github.com/google-ai-edge/gallery/blob/main/Android/src/app/src/main/java/com/google/aiedge/gallery/ui/llmchat/LlmChatModelHelper.kt",
+  textInputPlaceHolderRes = R.string.text_input_placeholder_llm_chat
+)
+
+val TASK_LLM_SINGLE_TURN = Task(
+  type = TaskType.LLM_SINGLE_TURN,
+  icon = Icons.Outlined.Widgets,
+  models = MODELS_LLM,
+  description = "Single turn use cases with on-device large language model",
   docUrl = "https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android",
   sourceCodeUrl = "https://github.com/google-ai-edge/gallery/blob/main/Android/src/app/src/main/java/com/google/aiedge/gallery/ui/llmchat/LlmChatModelHelper.kt",
   textInputPlaceHolderRes = R.string.text_input_placeholder_llm_chat
@@ -108,9 +121,10 @@ val TASK_IMAGE_GENERATION = Task(
 /** All tasks. */
 val TASKS: List<Task> = listOf(
 //  TASK_TEXT_CLASSIFICATION,
-//  TASK_IMAGE_CLASSIFICATION,
+  TASK_IMAGE_CLASSIFICATION,
   TASK_IMAGE_GENERATION,
   TASK_LLM_CHAT,
+  TASK_LLM_SINGLE_TURN,
 )
 
 fun getModelByName(name: String): Model? {

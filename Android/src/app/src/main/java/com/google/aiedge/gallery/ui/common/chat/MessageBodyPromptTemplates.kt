@@ -82,7 +82,7 @@ fun MessageBodyPromptTemplates(
         style = MaterialTheme.typography.titleSmall,
         modifier = Modifier
           .fillMaxWidth()
-          .offset(y = -4.dp),
+          .offset(y = (-4).dp),
         textAlign = TextAlign.Center,
       )
     }
@@ -140,7 +140,7 @@ fun MessageBodyPromptTemplatesPreview() {
   for ((index, task) in ALL_PREVIEW_TASKS.withIndex()) {
     task.index = index
     for (model in task.models) {
-      model.preProcess(task = task)
+      model.preProcess()
     }
   }
 

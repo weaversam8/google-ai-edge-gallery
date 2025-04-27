@@ -92,6 +92,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
 
             val connection = url.openConnection() as HttpURLConnection
             if (accessToken != null) {
+              Log.d(TAG, "Using access token: ${accessToken.subSequence(0, 10)}...")
               connection.setRequestProperty("Authorization", "Bearer $accessToken")
             }
 
@@ -176,6 +177,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
                     KEY_MODEL_DOWNLOAD_REMAINING_MS, remainingMs.toLong()
                   ).build()
                 )
+                Log.d(TAG, "downloadedBytes: $downloadedBytes")
                 lastSetProgressTs = curTs
               }
             }

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -32,23 +33,40 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.aiedge.gallery.R
+import com.google.aiedge.gallery.data.Model
+import com.google.aiedge.gallery.data.ModelDownloadStatusType
+import com.google.aiedge.gallery.data.Task
+import com.google.aiedge.gallery.ui.common.formatToHourMinSecond
 import com.google.aiedge.gallery.ui.common.getTaskIconColor
+import com.google.aiedge.gallery.ui.common.humanReadableSize
+import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
+import com.google.aiedge.gallery.ui.preview.MODEL_TEST1
+import com.google.aiedge.gallery.ui.preview.PreviewModelManagerViewModel
+import com.google.aiedge.gallery.ui.preview.TASK_TEST1
 import com.google.aiedge.gallery.ui.theme.GalleryTheme
+import com.google.aiedge.gallery.ui.theme.labelSmallNarrow
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.pow
@@ -66,8 +84,19 @@ private const val END_SCALE = 0.6f
  * scaling and rotation effect.
  */
 @Composable
-fun ModelDownloadingAnimation() {
+fun ModelDownloadingAnimation(
+  model: Model,
+  task: Task,
+  modelManagerViewModel: ModelManagerViewModel
+) {
   val scale = remember { Animatable(END_SCALE) }
+  val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
+  val downloadStatus by remember {
+    derivedStateOf { modelManagerUiState.modelDownloadStatus[model.name] }
+  }
+  val inProgress = downloadStatus?.status == ModelDownloadStatusType.IN_PROGRESS
+  val isPartiallyDownloaded = downloadStatus?.status == ModelDownloadStatusType.PARTIALLY_DOWNLOADED
+  var curDownloadProgress = 0f
 
   LaunchedEffect(Unit) { // Run this once
     while (true) {
@@ -93,67 +122,156 @@ fun ModelDownloadingAnimation() {
     }
   }
 
-  Column(
-    horizontalAlignment = Alignment.CenterHorizontally,
-    modifier = Modifier.offset(y = -GRID_SIZE / 8)
-  ) {
-    LazyVerticalGrid(
-      columns = GridCells.Fixed(2),
-      horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
-      verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
-      modifier = Modifier
-        .width(GRID_SIZE)
-        .height(GRID_SIZE)
-    ) {
-      itemsIndexed(
-        listOf(
-          R.drawable.pantegon,
-          R.drawable.double_circle,
-          R.drawable.circle,
-          R.drawable.four_circle
-        )
-      ) { index, imageResource ->
-        val currentScale =
-          if (index == 0 || index == 3) scale.value else START_SCALE + END_SCALE - scale.value
 
-        Box(
-          modifier = Modifier
-            .width((GRID_SIZE - GRID_SPACING) / 2)
-            .height((GRID_SIZE - GRID_SPACING) / 2),
-          contentAlignment = when (index) {
-            0 -> Alignment.BottomEnd
-            1 -> Alignment.BottomStart
-            2 -> Alignment.TopEnd
-            3 -> Alignment.TopStart
-            else -> Alignment.Center
-          }
-        ) {
-          Image(
-            painter = painterResource(id = imageResource),
-            contentDescription = "",
-            contentScale = ContentScale.Fit,
-            colorFilter = ColorFilter.tint(getTaskIconColor(index = index)),
-            modifier = Modifier
-              .graphicsLayer {
-                scaleX = currentScale
-                scaleY = currentScale
-                rotationZ = currentScale * 120
-                alpha = 0.8f
-              }
-              .size(70.dp)
+  // Failure message.
+  val curDownloadStatus = downloadStatus
+  if (curDownloadStatus != null && curDownloadStatus.status == ModelDownloadStatusType.FAILED) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      Text(
+        curDownloadStatus.errorMessage,
+        color = MaterialTheme.colorScheme.error,
+        style = labelSmallNarrow,
+        overflow = TextOverflow.Ellipsis,
+      )
+    }
+  }
+  // No failure
+  else {
+    Column(
+      horizontalAlignment = Alignment.CenterHorizontally,
+      modifier = Modifier.offset(y = -GRID_SIZE / 8)
+    ) {
+      LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+        verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+        modifier = Modifier
+          .width(GRID_SIZE)
+          .height(GRID_SIZE)
+      ) {
+        itemsIndexed(
+          listOf(
+            R.drawable.pantegon,
+            R.drawable.double_circle,
+            R.drawable.circle,
+            R.drawable.four_circle
           )
+        ) { index, imageResource ->
+          val currentScale =
+            if (index == 0 || index == 3) scale.value else START_SCALE + END_SCALE - scale.value
+
+          Box(
+            modifier = Modifier
+              .width((GRID_SIZE - GRID_SPACING) / 2)
+              .height((GRID_SIZE - GRID_SPACING) / 2),
+            contentAlignment = when (index) {
+              0 -> Alignment.BottomEnd
+              1 -> Alignment.BottomStart
+              2 -> Alignment.TopEnd
+              3 -> Alignment.TopStart
+              else -> Alignment.Center
+            }
+          ) {
+            Image(
+              painter = painterResource(id = imageResource),
+              contentDescription = "",
+              contentScale = ContentScale.Fit,
+              colorFilter = ColorFilter.tint(getTaskIconColor(index = index)),
+              modifier = Modifier
+                .graphicsLayer {
+                  scaleX = currentScale
+                  scaleY = currentScale
+                  rotationZ = currentScale * 120
+                  alpha = 0.8f
+                }
+                .size(70.dp)
+            )
+          }
         }
       }
-    }
 
-    Text(
-      "Feel free to switch apps or lock your device.\n"
-          + "The download will continue in the background.\n"
-          + "We'll send a notification when it's done.",
-      style = MaterialTheme.typography.bodyMedium,
-      textAlign = TextAlign.Center
-    )
+
+      // Download stats
+      var sizeLabel = model.totalBytes.humanReadableSize()
+      if (curDownloadStatus != null) {
+        // For in-progress model, show {receivedSize} / {totalSize} - {rate} - {remainingTime}
+        if (inProgress || isPartiallyDownloaded) {
+          var totalSize = curDownloadStatus.totalBytes
+          if (totalSize == 0L) {
+            totalSize = model.totalBytes
+          }
+          sizeLabel =
+            "${curDownloadStatus.receivedBytes.humanReadableSize(extraDecimalForGbAndAbove = true)} of ${totalSize.humanReadableSize()}"
+          if (curDownloadStatus.bytesPerSecond > 0) {
+            sizeLabel =
+              "$sizeLabel · ${curDownloadStatus.bytesPerSecond.humanReadableSize()} / s"
+            if (curDownloadStatus.remainingMs >= 0) {
+              sizeLabel =
+                "$sizeLabel · ${curDownloadStatus.remainingMs.formatToHourMinSecond()} left"
+            }
+          }
+          if (isPartiallyDownloaded) {
+            sizeLabel = "$sizeLabel (resuming...)"
+          }
+          curDownloadProgress =
+            curDownloadStatus.receivedBytes.toFloat() / curDownloadStatus.totalBytes.toFloat()
+          if (curDownloadProgress.isNaN()) {
+            curDownloadProgress = 0f
+          }
+        }
+        // Status for unzipping.
+        else if (curDownloadStatus.status == ModelDownloadStatusType.UNZIPPING) {
+          sizeLabel = "Unzipping..."
+        }
+        Text(
+          sizeLabel,
+          color = MaterialTheme.colorScheme.secondary,
+          style = labelSmallNarrow.copy(fontSize = 9.sp, lineHeight = 10.sp),
+          textAlign = TextAlign.Center,
+          overflow = TextOverflow.Visible,
+          modifier = Modifier
+            .padding(bottom = 4.dp)
+        )
+      }
+
+      // Download progress.
+      if (inProgress || isPartiallyDownloaded) {
+        val animatedProgress = remember { Animatable(0f) }
+        LinearProgressIndicator(
+          progress = { animatedProgress.value },
+          color = getTaskIconColor(task = task),
+          trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 36.dp)
+            .padding(horizontal = 36.dp)
+        )
+        LaunchedEffect(curDownloadProgress) {
+          animatedProgress.animateTo(curDownloadProgress, animationSpec = tween(150))
+        }
+      }
+      // Unzipping progress.
+      else if (downloadStatus?.status == ModelDownloadStatusType.UNZIPPING) {
+        LinearProgressIndicator(
+          color = getTaskIconColor(task = task),
+          trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 36.dp)
+            .padding(horizontal = 36.dp)
+        )
+      }
+
+      Text(
+        "Feel free to switch apps or lock your device.\n"
+            + "The download will continue in the background.\n"
+            + "We'll send a notification when it's done.",
+        style = MaterialTheme.typography.bodyMedium,
+        textAlign = TextAlign.Center
+      )
+    }
   }
+
 }
 
 // Custom Easing function for a multi-bounce effect
@@ -168,9 +286,15 @@ fun multiBounceEasing(bounces: Int, decay: Float): Easing = Easing { x ->
 @Preview(showBackground = true)
 @Composable
 fun ModelDownloadingAnimationPreview() {
+  val context = LocalContext.current
+
   GalleryTheme {
     Row(modifier = Modifier.padding(16.dp)) {
-      ModelDownloadingAnimation()
+      ModelDownloadingAnimation(
+        model = MODEL_TEST1,
+        task = TASK_TEST1,
+        modelManagerViewModel = PreviewModelManagerViewModel(context = context)
+      )
     }
   }
 }

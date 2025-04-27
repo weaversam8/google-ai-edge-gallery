@@ -30,7 +30,7 @@ android {
     minSdk = 24
     targetSdk = 35
     versionCode = 1
-    versionName = "20250421"
+    versionName = "20250428"
 
     // Needed for HuggingFace auth workflows.
     manifestPlaceholders["appAuthRedirectScheme"] = "com.google.aiedge.gallery.oauth"

@@ -23,8 +23,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.filled.DownloadForOffline
+import androidx.compose.material.icons.rounded.Downloading
 import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.google.aiedge.gallery.data.ModelDownloadStatus
 import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.ui.theme.GalleryTheme
+import com.google.aiedge.gallery.ui.theme.customColors
 
 /**
  * Composable function to display an icon representing the download status of a model.
@@ -56,7 +59,7 @@ fun StatusIcon(downloadStatus: ModelDownloadStatus?, modifier: Modifier = Modifi
       ModelDownloadStatusType.SUCCEEDED -> {
         Icon(
           Icons.Filled.DownloadForOffline,
-          tint = Color(0xff3d860b),
+          tint = MaterialTheme.customColors.successColor,
           contentDescription = "",
           modifier = Modifier.size(14.dp)
         )
@@ -65,6 +68,12 @@ fun StatusIcon(downloadStatus: ModelDownloadStatus?, modifier: Modifier = Modifi
       ModelDownloadStatusType.FAILED -> Icon(
         Icons.Rounded.Error,
         tint = Color(0xFFAA0000),
+        contentDescription = "",
+        modifier = Modifier.size(14.dp)
+      )
+
+      ModelDownloadStatusType.IN_PROGRESS -> Icon(
+        Icons.Rounded.Downloading,
         contentDescription = "",
         modifier = Modifier.size(14.dp)
       )

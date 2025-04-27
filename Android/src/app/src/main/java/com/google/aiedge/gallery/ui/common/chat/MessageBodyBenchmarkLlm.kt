@@ -19,8 +19,8 @@ package com.google.aiedge.gallery.ui.common.chat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,16 +33,14 @@ import com.google.aiedge.gallery.ui.theme.GalleryTheme
  * This function renders benchmark statistics (e.g., various token speed) in data cards
  */
 @Composable
-fun MessageBodyBenchmarkLlm(message: ChatMessageBenchmarkLlmResult) {
+fun MessageBodyBenchmarkLlm(message: ChatMessageBenchmarkLlmResult, modifier: Modifier = Modifier) {
   Column(
-    modifier = Modifier
-      .padding(12.dp)
-      .wrapContentWidth(),
+    modifier = modifier.padding(12.dp),
     verticalArrangement = Arrangement.spacedBy(8.dp)
   ) {
     // Data cards.
     Row(
-      modifier = Modifier.wrapContentWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)
+      modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
     ) {
       for (stat in message.orderedStats) {
         DataCard(

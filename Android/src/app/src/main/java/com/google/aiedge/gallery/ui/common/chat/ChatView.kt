@@ -18,18 +18,10 @@ package com.google.aiedge.gallery.ui.common.chat
 
 import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -40,29 +32,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import com.google.aiedge.gallery.GalleryTopAppBar
-import com.google.aiedge.gallery.data.AppBarAction
-import com.google.aiedge.gallery.data.AppBarActionType
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.data.Task
-import com.google.aiedge.gallery.ui.common.checkNotificationPermissionAndStartDownload
+import com.google.aiedge.gallery.ui.common.ModelPageAppBar
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.aiedge.gallery.ui.preview.PreviewChatModel
 import com.google.aiedge.gallery.ui.preview.PreviewModelManagerViewModel
 import com.google.aiedge.gallery.ui.preview.TASK_TEST1
 import com.google.aiedge.gallery.ui.theme.GalleryTheme
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
@@ -77,7 +61,6 @@ private const val TAG = "AGChatView"
  * manages model initialization, cleanup, and download status, and handles navigation and system
  * back gestures.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatView(
   task: Task,
@@ -96,16 +79,11 @@ fun ChatView(
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
   val selectedModel = modelManagerUiState.selectedModel
 
-  val pagerState = rememberPagerState(initialPage = task.models.indexOf(selectedModel),
+  val pagerState = rememberPagerState(
+    initialPage = task.models.indexOf(selectedModel),
     pageCount = { task.models.size })
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
-
-  val launcher = rememberLauncherForActivityResult(
-    ActivityResultContracts.RequestPermission()
-  ) {
-    modelManagerViewModel.downloadModel(task = task, model = selectedModel)
-  }
 
   val handleNavigateUp = {
     navigateUp()
@@ -113,17 +91,17 @@ fun ChatView(
     // clean up all models.
     scope.launch(Dispatchers.Default) {
       for (model in task.models) {
-        modelManagerViewModel.cleanupModel(model = model)
+        modelManagerViewModel.cleanupModel(task = task, model = model)
       }
     }
   }
 
   // Initialize model when model/download state changes.
-  val status = modelManagerUiState.modelDownloadStatus[selectedModel.name]
-  LaunchedEffect(status, selectedModel.name) {
-    if (status?.status == ModelDownloadStatusType.SUCCEEDED) {
+  val curDownloadStatus = modelManagerUiState.modelDownloadStatus[selectedModel.name]
+  LaunchedEffect(curDownloadStatus, selectedModel.name) {
+    if (curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
       Log.d(TAG, "Initializing model '${selectedModel.name}' from ChatView launched effect")
-      modelManagerViewModel.initializeModel(context, model = selectedModel)
+      modelManagerViewModel.initializeModel(context, task = task, model = selectedModel)
     }
   }
 
@@ -135,7 +113,7 @@ fun ChatView(
       "Pager settled on model '${curSelectedModel.name}' from '${selectedModel.name}'. Updating selected model."
     )
     if (curSelectedModel.name != selectedModel.name) {
-      modelManagerViewModel.cleanupModel(model = selectedModel)
+      modelManagerViewModel.cleanupModel(task = task, model = selectedModel)
     }
     modelManagerViewModel.selectModel(curSelectedModel)
   }
@@ -146,24 +124,36 @@ fun ChatView(
   }
 
   Scaffold(modifier = modifier, topBar = {
-    GalleryTopAppBar(
-      title = task.type.label,
-      leftAction = AppBarAction(actionType = AppBarActionType.NAVIGATE_UP, actionFn = {
+    ModelPageAppBar(
+      task = task,
+      model = selectedModel,
+      modelManagerViewModel = modelManagerViewModel,
+      onConfigChanged = { old, new ->
+        viewModel.addConfigChangedMessage(
+          oldConfigValues = old,
+          newConfigValues = new,
+          model = selectedModel
+        )
+      },
+      onBackClicked = {
         handleNavigateUp()
-      }),
-      rightAction = AppBarAction(actionType = AppBarActionType.NO_ACTION, actionFn = {}),
+      },
+      onModelSelected = { model ->
+        scope.launch {
+          pagerState.animateScrollToPage(task.models.indexOf(model))
+        }
+      },
     )
   }) { innerPadding ->
     Box {
       // A horizontal scrollable pager to switch between models.
       HorizontalPager(state = pagerState) { pageIndex ->
         val curSelectedModel = task.models[pageIndex]
+        val curModelDownloadStatus = modelManagerUiState.modelDownloadStatus[curSelectedModel.name]
 
         // Calculate the alpha of the current page based on how far they are from the center.
-        val pageOffset = (
-            (pagerState.currentPage - pageIndex) + pagerState
-              .currentPageOffsetFraction
-            ).absoluteValue
+        val pageOffset =
+          ((pagerState.currentPage - pageIndex) + pagerState.currentPageOffsetFraction).absoluteValue
         val curAlpha = 1f - pageOffset.coerceIn(0f, 1f)
 
         Column(
@@ -172,91 +162,14 @@ fun ChatView(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
         ) {
-          // Model selector at the top.
-          ModelSelector(
+          ModelDownloadStatusInfoPanel(
             model = curSelectedModel,
             task = task,
-            modelManagerViewModel = modelManagerViewModel,
-            onConfigChanged = { old, new ->
-              viewModel.addConfigChangedMessage(
-                oldConfigValues = old,
-                newConfigValues = new,
-                model = curSelectedModel
-              )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            contentAlpha = curAlpha,
+            modelManagerViewModel = modelManagerViewModel
           )
 
-          // Manages the conditional display of UI elements (download model button and downloading
-          // animation) based on the corresponding download status.
-          //
-          // It uses delayed visibility ensuring they are shown only after a short delay if their
-          // respective conditions remain true. This prevents UI flickering and provides a smoother
-          // user experience.
-          val curStatus = modelManagerUiState.modelDownloadStatus[curSelectedModel.name]
-          var shouldShowDownloadingAnimation by remember { mutableStateOf(false) }
-          var downloadingAnimationConditionMet by remember { mutableStateOf(false) }
-          var shouldShowDownloadModelButton by remember { mutableStateOf(false) }
-          var downloadModelButtonConditionMet by remember { mutableStateOf(false) }
-
-          downloadingAnimationConditionMet =
-            curStatus?.status == ModelDownloadStatusType.IN_PROGRESS ||
-                curStatus?.status == ModelDownloadStatusType.PARTIALLY_DOWNLOADED ||
-                curStatus?.status == ModelDownloadStatusType.UNZIPPING
-          downloadModelButtonConditionMet =
-            curStatus?.status == ModelDownloadStatusType.FAILED ||
-                curStatus?.status == ModelDownloadStatusType.NOT_DOWNLOADED
-
-          LaunchedEffect(downloadingAnimationConditionMet) {
-            if (downloadingAnimationConditionMet) {
-              delay(100)
-              shouldShowDownloadingAnimation = true
-            } else {
-              shouldShowDownloadingAnimation = false
-            }
-          }
-
-          LaunchedEffect(downloadModelButtonConditionMet) {
-            if (downloadModelButtonConditionMet) {
-              delay(700)
-              shouldShowDownloadModelButton = true
-            } else {
-              shouldShowDownloadModelButton = false
-            }
-          }
-
-          AnimatedVisibility(
-            visible = shouldShowDownloadingAnimation,
-            enter = scaleIn(initialScale = 0.9f) + fadeIn(),
-            exit = scaleOut(targetScale = 0.9f) + fadeOut()
-          ) {
-            Box(
-              modifier = Modifier.fillMaxSize(),
-              contentAlignment = Alignment.Center
-            ) {
-              ModelDownloadingAnimation()
-            }
-          }
-
-          AnimatedVisibility(
-            visible = shouldShowDownloadModelButton,
-            enter = fadeIn(),
-            exit = fadeOut()
-          ) {
-            ModelNotDownloaded(modifier = Modifier.weight(1f), onClicked = {
-              checkNotificationPermissionAndStartDownload(
-                context = context,
-                launcher = launcher,
-                modelManagerViewModel = modelManagerViewModel,
-                task = task,
-                model = curSelectedModel
-              )
-            })
-          }
-
           // The main messages panel.
-          if (curStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
+          if (curModelDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
             ChatPanel(
               modelManagerViewModel = modelManagerViewModel,
               task = task,

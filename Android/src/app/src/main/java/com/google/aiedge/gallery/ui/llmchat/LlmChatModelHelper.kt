@@ -30,7 +30,7 @@ private const val TAG = "AGLlmChatModelHelper"
 typealias ResultListener = (partialResult: String, done: Boolean) -> Unit
 typealias CleanUpListener = () -> Unit
 
-data class LlmModelInstance(val engine: LlmInference, val session: LlmInferenceSession)
+data class LlmModelInstance(val engine: LlmInference, var session: LlmInferenceSession)
 
 object LlmChatModelHelper {
   // Indexed by model name.
@@ -74,6 +74,24 @@ object LlmChatModelHelper {
     onDone("")
   }
 
+  fun resetSession(model: Model) {
+    val instance = model.instance as LlmModelInstance? ?: return
+    val session = instance.session
+    session.close()
+
+    val inference = instance.engine
+    val topK = model.getIntConfigValue(key = ConfigKey.TOPK, defaultValue = DEFAULT_TOPK)
+    val topP = model.getFloatConfigValue(key = ConfigKey.TOPP, defaultValue = DEFAULT_TOPP)
+    val temperature =
+      model.getFloatConfigValue(key = ConfigKey.TEMPERATURE, defaultValue = DEFAULT_TEMPERATURE)
+    val newSession = LlmInferenceSession.createFromOptions(
+      inference,
+      LlmInferenceSession.LlmInferenceSessionOptions.builder().setTopK(topK).setTopP(topP)
+        .setTemperature(temperature).build()
+    )
+    instance.session = newSession
+  }
+
   fun cleanUp(model: Model) {
     if (model.instance == null) {
       return
@@ -99,7 +117,11 @@ object LlmChatModelHelper {
     input: String,
     resultListener: ResultListener,
     cleanUpListener: CleanUpListener,
+    singleTurn: Boolean = false,
   ) {
+    if (singleTurn) {
+      resetSession(model = model)
+    }
     val instance = model.instance as LlmModelInstance
 
     // Set listener.

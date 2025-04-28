@@ -90,6 +90,8 @@ data class Model(
   // The following fields are managed by the app. Don't need to set manually.
   var instance: Any? = null,
   var initializing: Boolean = false,
+  // TODO(jingjin): use a "queue" system to manage model init and cleanup.
+  var cleanUpAfterInit: Boolean = false,
   var configValues: Map<String, Any> = mapOf(),
   var totalBytes: Long = 0L,
   var accessToken: String? = null,

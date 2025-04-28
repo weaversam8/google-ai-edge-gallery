@@ -133,6 +133,11 @@ data class ModelManagerUiState(
   val textInputHistory: List<String> = listOf(),
 )
 
+data class PagerScrollState(
+  val page: Int = 0,
+  val offset: Float = 0f,
+)
+
 /**
  * ViewModel responsible for managing models, their download status, and initialization.
  *
@@ -150,8 +155,11 @@ open class ModelManagerViewModel(
     downloadRepository.getEnqueuedOrRunningWorkInfos()
   protected val _uiState = MutableStateFlow(createUiState())
   val uiState = _uiState.asStateFlow()
+
   val authService = AuthorizationService(context)
   var curAccessToken: String = ""
+
+  var pagerScrollState: MutableStateFlow<PagerScrollState> = MutableStateFlow(PagerScrollState())
 
   init {
     Log.d(TAG, "In-progress worker infos: $inProgressWorkInfos")
@@ -269,6 +277,7 @@ open class ModelManagerViewModel(
 
       // Skip if initialization is in progress.
       if (model.initializing) {
+        model.cleanUpAfterInit = false
         Log.d(TAG, "Model '${model.name}' is being initialized. Skipping.")
         return@launch
       }
@@ -299,6 +308,10 @@ open class ModelManagerViewModel(
             model = model,
             status = ModelInitializationStatusType.INITIALIZED,
           )
+          if (model.cleanUpAfterInit) {
+            Log.d(TAG, "Model '${model.name}' needs cleaning up after init.")
+            cleanupModel(task = task, model = model)
+          }
         } else if (error.isNotEmpty()) {
           Log.d(TAG, "Model '${model.name}' failed to initialize")
           updateModelInitializationStatus(
@@ -345,6 +358,7 @@ open class ModelManagerViewModel(
 
   fun cleanupModel(task: Task, model: Model) {
     if (model.instance != null) {
+      model.cleanUpAfterInit = false
       Log.d(TAG, "Cleaning up model '${model.name}'...")
       when (task.type) {
         TaskType.TEXT_CLASSIFICATION -> TextClassificationModelHelper.cleanUp(model = model)
@@ -360,6 +374,12 @@ open class ModelManagerViewModel(
       updateModelInitializationStatus(
         model = model, status = ModelInitializationStatusType.NOT_INITIALIZED
       )
+    } else {
+      // When model is being initialized and we are trying to clean it up at same time, we mark it
+      // to clean up and it will be cleaned up after initialization is done.
+      if (model.initializing) {
+        model.cleanUpAfterInit = true
+      }
     }
   }
 

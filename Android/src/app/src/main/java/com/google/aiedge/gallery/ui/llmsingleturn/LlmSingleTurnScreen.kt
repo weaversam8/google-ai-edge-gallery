@@ -18,17 +18,11 @@ package com.google.aiedge.gallery.ui.llmsingleturn
 
 import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -42,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
@@ -50,8 +45,6 @@ import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.ui.ViewModelProvider
 import com.google.aiedge.gallery.ui.common.ModelPageAppBar
 import com.google.aiedge.gallery.ui.common.chat.ModelDownloadStatusInfoPanel
-import com.google.aiedge.gallery.ui.common.chat.ModelInitializationStatusChip
-import com.google.aiedge.gallery.ui.modelmanager.ModelInitializationStatusType
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.aiedge.gallery.ui.preview.PreviewLlmSingleTurnViewModel
 import com.google.aiedge.gallery.ui.preview.PreviewModelManagerViewModel
@@ -116,9 +109,6 @@ fun LlmSingleTurnScreen(
     }
   }
 
-  val modelInitializationStatus =
-    modelManagerUiState.modelInitializationStatus[selectedModel.name]
-
   Scaffold(modifier = modifier, topBar = {
     ModelPageAppBar(
       task = task,
@@ -151,49 +141,42 @@ fun LlmSingleTurnScreen(
       )
 
       // Main UI after model is downloaded.
-      if (curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
-        Box(
-          contentAlignment = Alignment.BottomCenter,
-          modifier = Modifier.weight(1f)
-        ) {
-          VerticalSplitView(modifier = Modifier.fillMaxSize(),
-            topView = {
-              PromptTemplatesPanel(
+      val modelDownloaded = curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED
+      Box(
+        contentAlignment = Alignment.BottomCenter,
+        modifier = Modifier
+          .weight(1f)
+          // Just hide the UI without removing it from the screen so that the scroll syncing
+          // from ResponsePanel still works.
+          .alpha(if (modelDownloaded) 1.0f else 0.0f)
+      ) {
+        VerticalSplitView(modifier = Modifier.fillMaxSize(),
+          topView = {
+            PromptTemplatesPanel(
+              model = selectedModel,
+              viewModel = viewModel,
+              onSend = { fullPrompt ->
+                viewModel.generateResponse(model = selectedModel, input = fullPrompt)
+              }, modifier = Modifier.fillMaxSize()
+            )
+          },
+          bottomView = {
+            Box(
+              contentAlignment = Alignment.BottomCenter,
+              modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.customColors.agentBubbleBgColor)
+            ) {
+              ResponsePanel(
                 model = selectedModel,
                 viewModel = viewModel,
-                onSend = { fullPrompt ->
-                  viewModel.generateResponse(model = selectedModel, input = fullPrompt)
-                }, modifier = Modifier.fillMaxSize()
-              )
-            },
-            bottomView = {
-              Box(
-                contentAlignment = Alignment.BottomCenter,
+                modelManagerViewModel = modelManagerViewModel,
                 modifier = Modifier
                   .fillMaxSize()
-                  .background(MaterialTheme.customColors.agentBubbleBgColor)
-              ) {
-                ResponsePanel(
-                  model = selectedModel,
-                  viewModel = viewModel,
-                  modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = innerPadding.calculateBottomPadding())
-                )
-              }
-            })
-
-          // Model initialization in-progress message.
-          this@Column.AnimatedVisibility(
-            visible = modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING,
-            enter = scaleIn() + fadeIn(),
-            exit = scaleOut() + fadeOut(),
-            modifier = Modifier.offset(y = -innerPadding.calculateBottomPadding())
-          ) {
-            ModelInitializationStatusChip()
-          }
-
-        }
+                  .padding(bottom = innerPadding.calculateBottomPadding())
+              )
+            }
+          })
       }
     }
   }

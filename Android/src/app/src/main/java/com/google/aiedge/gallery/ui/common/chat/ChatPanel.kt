@@ -16,11 +16,6 @@
 
 package com.google.aiedge.gallery.ui.common.chat
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -33,7 +28,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -424,16 +418,6 @@ fun ChatPanel(
             }
           }
         }
-      }
-
-      // Model initialization in-progress message.
-      this@Column.AnimatedVisibility(
-        visible = modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING,
-        enter = scaleIn() + fadeIn(),
-        exit = scaleOut() + fadeOut(),
-        modifier = Modifier.offset(y = 12.dp)
-      ) {
-        ModelInitializationStatusChip()
       }
 
       SnackbarHost(hostState = snackbarHostState, modifier = Modifier.padding(vertical = 4.dp))

@@ -16,6 +16,7 @@
 
 package com.google.aiedge.gallery.ui.llmsingleturn
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -45,162 +48,195 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.TASK_LLM_SINGLE_TURN
 import com.google.aiedge.gallery.ui.common.chat.MarkdownText
 import com.google.aiedge.gallery.ui.common.chat.MessageBodyBenchmarkLlm
 import com.google.aiedge.gallery.ui.common.chat.MessageBodyLoading
-import com.google.aiedge.gallery.ui.theme.GalleryTheme
+import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
+import com.google.aiedge.gallery.ui.modelmanager.PagerScrollState
 
 private val OPTIONS = listOf("Response", "Benchmark")
 private val ICONS = listOf(Icons.Outlined.AutoAwesome, Icons.Outlined.Timer)
+private const val TAG = "AGResponsePanel"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResponsePanel(
   model: Model,
   viewModel: LlmSingleTurnViewModel,
+  modelManagerViewModel: ModelManagerViewModel,
   modifier: Modifier = Modifier,
 ) {
+  val task = TASK_LLM_SINGLE_TURN
   val uiState by viewModel.uiState.collectAsState()
+  val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
   val inProgress = uiState.inProgress
   val initializing = uiState.initializing
   val selectedPromptTemplateType = uiState.selectedPromptTemplateType
-  val response = uiState.responsesByModel[model.name]?.get(selectedPromptTemplateType.label) ?: ""
-  val benchmark = uiState.benchmarkByModel[model.name]?.get(selectedPromptTemplateType.label)
   val responseScrollState = rememberScrollState()
   var selectedOptionIndex by remember { mutableIntStateOf(0) }
   val clipboardManager = LocalClipboardManager.current
-
-  // Scroll to bottom when response changes.
-  LaunchedEffect(response) {
-    if (inProgress) {
-      responseScrollState.animateScrollTo(responseScrollState.maxValue)
-    }
-  }
+  val pagerState = rememberPagerState(
+    initialPage = task.models.indexOf(model),
+    pageCount = { task.models.size })
 
   // Select the "response" tab when prompt template changes.
   LaunchedEffect(selectedPromptTemplateType) {
     selectedOptionIndex = 0
   }
 
-  if (initializing) {
-    Box(
-      contentAlignment = Alignment.TopStart,
-      modifier = modifier
-        .fillMaxSize()
-        .padding(horizontal = 16.dp)
-    ) {
-      MessageBodyLoading()
+  // Update selected model and clean up previous model when page is settled on a model page.
+  LaunchedEffect(pagerState.settledPage) {
+    val curSelectedModel = task.models[pagerState.settledPage]
+    Log.d(
+      TAG,
+      "Pager settled on model '${curSelectedModel.name}' from '${model.name}'. Updating selected model."
+    )
+    if (curSelectedModel.name != model.name) {
+      modelManagerViewModel.cleanupModel(task = task, model = model)
     }
-  } else {
-    // Message when response is empty.
-    if (response.isEmpty()) {
-      Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Text(
-          "Response will appear here",
-          modifier = Modifier.alpha(0.5f),
-          style = MaterialTheme.typography.labelMedium,
-        )
-      }
-    }
-    // Response markdown.
-    else {
-      Column(
-        modifier = modifier
-          .padding(horizontal = 16.dp)
-          .padding(bottom = 4.dp)
-      ) {
-        // Response/benchmark switch.
-        Row(modifier = Modifier.fillMaxWidth()) {
-          PrimaryTabRow(
-            selectedTabIndex = selectedOptionIndex,
-            containerColor = Color.Transparent,
-          ) {
-            OPTIONS.forEachIndexed { index, title ->
-              Tab(selected = selectedOptionIndex == index, onClick = {
-                selectedOptionIndex = index
-              }, text = {
-                Row(
-                  verticalAlignment = Alignment.CenterVertically,
-                  horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                  Icon(
-                    ICONS[index],
-                    contentDescription = "",
-                    modifier = Modifier
-                      .size(16.dp)
-                      .alpha(0.7f)
-                  )
-                  Text(text = title)
-                }
-              })
-            }
-          }
-        }
-        if (selectedOptionIndex == 0) {
-          Box(
-            contentAlignment = Alignment.BottomEnd,
-            modifier = Modifier.weight(1f)
-          ) {
-            Column(
-              modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(responseScrollState)
-            ) {
-              MarkdownText(
-                text = response,
-                modifier = Modifier.padding(top = 8.dp, bottom = 40.dp)
-              )
-            }
-            // Copy button.
-            IconButton(
-              onClick = {
-                val clipData = AnnotatedString(response)
-                clipboardManager.setText(clipData)
-              },
-              colors = IconButtonDefaults.iconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.primary,
-              ),
-            ) {
-              Icon(
-                Icons.Outlined.ContentCopy,
-                contentDescription = "",
-                modifier = Modifier.size(20.dp),
-              )
-            }
-          }
-        } else if (selectedOptionIndex == 1) {
-          if (benchmark != null) {
-            MessageBodyBenchmarkLlm(message = benchmark, modifier = Modifier.fillMaxWidth())
-          }
-        }
-      }
+    modelManagerViewModel.selectModel(curSelectedModel)
+  }
+
+  // Trigger scroll sync.
+  LaunchedEffect(pagerState) {
+    snapshotFlow {
+      PagerScrollState(
+        page = pagerState.currentPage,
+        offset = pagerState.currentPageOffsetFraction
+      )
+    }.collect { scrollState ->
+      modelManagerViewModel.pagerScrollState.value = scrollState
     }
   }
-}
 
-@Preview(showBackground = true)
-@Composable
-fun ResponsePanelPreview() {
-  GalleryTheme {
-    ResponsePanel(
-      model = TASK_LLM_SINGLE_TURN.models[0],
-      viewModel = LlmSingleTurnViewModel(),
-      modifier = Modifier.fillMaxSize()
-    )
+  // Scroll pager when selected model changes.
+  LaunchedEffect(modelManagerUiState.selectedModel) {
+    pagerState.animateScrollToPage(task.models.indexOf(model))
+  }
+
+  HorizontalPager(state = pagerState) { pageIndex ->
+    val curPageModel = task.models[pageIndex]
+
+    val response =
+      uiState.responsesByModel[curPageModel.name]?.get(selectedPromptTemplateType.label) ?: ""
+    val benchmark =
+      uiState.benchmarkByModel[curPageModel.name]?.get(selectedPromptTemplateType.label)
+
+    // Scroll to bottom when response changes.
+    LaunchedEffect(response) {
+      if (inProgress) {
+        responseScrollState.animateScrollTo(responseScrollState.maxValue)
+      }
+    }
+
+    if (initializing) {
+      Box(
+        contentAlignment = Alignment.TopStart,
+        modifier = modifier
+          .fillMaxSize()
+          .padding(horizontal = 16.dp)
+      ) {
+        MessageBodyLoading()
+      }
+    } else {
+      // Message when response is empty.
+      if (response.isEmpty()) {
+        Row(
+          modifier = Modifier.fillMaxSize(),
+          horizontalArrangement = Arrangement.Center,
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            "Response will appear here",
+            modifier = Modifier.alpha(0.5f),
+            style = MaterialTheme.typography.labelMedium,
+          )
+        }
+      }
+      // Response markdown.
+      else {
+        Column(
+          modifier = modifier
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 4.dp)
+        ) {
+          // Response/benchmark switch.
+          Row(modifier = Modifier.fillMaxWidth()) {
+            PrimaryTabRow(
+              selectedTabIndex = selectedOptionIndex,
+              containerColor = Color.Transparent,
+            ) {
+              OPTIONS.forEachIndexed { index, title ->
+                Tab(selected = selectedOptionIndex == index, onClick = {
+                  selectedOptionIndex = index
+                }, text = {
+                  Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                  ) {
+                    Icon(
+                      ICONS[index],
+                      contentDescription = "",
+                      modifier = Modifier
+                        .size(16.dp)
+                        .alpha(0.7f)
+                    )
+                    Text(text = title)
+                  }
+                })
+              }
+            }
+          }
+          if (selectedOptionIndex == 0) {
+            Box(
+              contentAlignment = Alignment.BottomEnd,
+              modifier = Modifier.weight(1f)
+            ) {
+              Column(
+                modifier = Modifier
+                  .fillMaxSize()
+                  .verticalScroll(responseScrollState)
+              ) {
+                MarkdownText(
+                  text = response,
+                  modifier = Modifier.padding(top = 8.dp, bottom = 40.dp)
+                )
+              }
+              // Copy button.
+              IconButton(
+                onClick = {
+                  val clipData = AnnotatedString(response)
+                  clipboardManager.setText(clipData)
+                },
+                colors = IconButtonDefaults.iconButtonColors(
+                  containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                  contentColor = MaterialTheme.colorScheme.primary,
+                ),
+              ) {
+                Icon(
+                  Icons.Outlined.ContentCopy,
+                  contentDescription = "",
+                  modifier = Modifier.size(20.dp),
+                )
+              }
+            }
+          } else if (selectedOptionIndex == 1) {
+            if (benchmark != null) {
+              MessageBodyBenchmarkLlm(message = benchmark, modifier = Modifier.fillMaxWidth())
+            }
+          }
+        }
+      }
+    }
   }
 }

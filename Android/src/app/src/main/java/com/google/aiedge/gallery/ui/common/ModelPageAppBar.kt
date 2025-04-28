@@ -16,26 +16,19 @@
 
 package com.google.aiedge.gallery.ui.common
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,7 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
@@ -54,7 +47,6 @@ import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.ui.common.chat.ConfigDialog
-import com.google.aiedge.gallery.ui.common.modelitem.StatusIcon
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,14 +61,15 @@ fun ModelPageAppBar(
   onConfigChanged: (oldConfigValues: Map<String, Any>, newConfigValues: Map<String, Any>) -> Unit = { _, _ -> },
 ) {
   var showConfigDialog by remember { mutableStateOf(false) }
-  var showModelPicker by remember { mutableStateOf(false) }
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val context = LocalContext.current
   val curDownloadStatus = modelManagerUiState.modelDownloadStatus[model.name]
 
   CenterAlignedTopAppBar(title = {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
       // Task type.
       Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -95,29 +88,13 @@ fun ModelPageAppBar(
         )
       }
 
-      // Model name.
-      Row(verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier
-          .clip(CircleShape)
-          .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-          .clickable {
-            showModelPicker = true
-          }
-          .padding(start = 8.dp, end = 2.dp)) {
-        StatusIcon(downloadStatus = modelManagerUiState.modelDownloadStatus[model.name])
-        Text(
-          model.name,
-          style = MaterialTheme.typography.labelSmall,
-          modifier = Modifier.padding(start = 4.dp),
-        )
-        Icon(
-          Icons.Rounded.ArrowDropDown,
-          modifier = Modifier.size(20.dp),
-          contentDescription = "",
-        )
-      }
-
+      // Model chips pager.
+      ModelPickerChipsPager(
+        task = task,
+        initialModel = model,
+        modelManagerViewModel = modelManagerViewModel,
+        onModelSelected = onModelSelected,
+      )
     }
   }, modifier = modifier,
     // The back button.
@@ -131,14 +108,20 @@ fun ModelPageAppBar(
     },
     // The config button for the model (if existed).
     actions = {
-      if (model.configs.isNotEmpty() && curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
-        IconButton(onClick = { showConfigDialog = true }) {
-          Icon(
-            imageVector = Icons.Rounded.Settings,
-            contentDescription = "",
-            tint = MaterialTheme.colorScheme.primary
-          )
-        }
+      val showConfigButton =
+        model.configs.isNotEmpty() && curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED
+      IconButton(
+        onClick = {
+          showConfigDialog = true
+        },
+        enabled = showConfigButton,
+        modifier = Modifier.alpha(if (showConfigButton) 1f else 0f)
+      ) {
+        Icon(
+          imageVector = Icons.Rounded.Settings,
+          contentDescription = "",
+          tint = MaterialTheme.colorScheme.primary
+        )
       }
     })
 
@@ -192,22 +175,5 @@ fun ModelPageAppBar(
         onConfigChanged(oldConfigValues, model.configValues)
       },
     )
-  }
-
-  // Model picker.
-  if (showModelPicker) {
-    ModalBottomSheet(
-      onDismissRequest = { showModelPicker = false },
-      sheetState = sheetState,
-    ) {
-      ModelPicker(
-        task = task,
-        modelManagerViewModel = modelManagerViewModel,
-        onModelSelected = { model ->
-          showModelPicker = false
-          onModelSelected(model)
-        }
-      )
-    }
   }
 }

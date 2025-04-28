@@ -25,14 +25,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -42,6 +45,7 @@ import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.ui.common.ModelPageAppBar
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
+import com.google.aiedge.gallery.ui.modelmanager.PagerScrollState
 import com.google.aiedge.gallery.ui.preview.PreviewChatModel
 import com.google.aiedge.gallery.ui.preview.PreviewModelManagerViewModel
 import com.google.aiedge.gallery.ui.preview.TASK_TEST1
@@ -84,8 +88,10 @@ fun ChatView(
     pageCount = { task.models.size })
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
+  var navigatingUp by remember { mutableStateOf(false) }
 
   val handleNavigateUp = {
+    navigatingUp = true
     navigateUp()
 
     // clean up all models.
@@ -99,9 +105,11 @@ fun ChatView(
   // Initialize model when model/download state changes.
   val curDownloadStatus = modelManagerUiState.modelDownloadStatus[selectedModel.name]
   LaunchedEffect(curDownloadStatus, selectedModel.name) {
-    if (curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
-      Log.d(TAG, "Initializing model '${selectedModel.name}' from ChatView launched effect")
-      modelManagerViewModel.initializeModel(context, task = task, model = selectedModel)
+    if (!navigatingUp) {
+      if (curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
+        Log.d(TAG, "Initializing model '${selectedModel.name}' from ChatView launched effect")
+        modelManagerViewModel.initializeModel(context, task = task, model = selectedModel)
+      }
     }
   }
 
@@ -116,6 +124,25 @@ fun ChatView(
       modelManagerViewModel.cleanupModel(task = task, model = selectedModel)
     }
     modelManagerViewModel.selectModel(curSelectedModel)
+  }
+
+  LaunchedEffect(pagerState) {
+    // Collect from the a snapshotFlow reading the currentPage
+    snapshotFlow { pagerState.currentPage }.collect { page ->
+      Log.d(TAG, "Page changed to $page")
+    }
+  }
+
+  // Trigger scroll sync.
+  LaunchedEffect(pagerState) {
+    snapshotFlow {
+      PagerScrollState(
+        page = pagerState.currentPage,
+        offset = pagerState.currentPageOffsetFraction
+      )
+    }.collect { scrollState ->
+      modelManagerViewModel.pagerScrollState.value = scrollState
+    }
   }
 
   // Handle system's edge swipe.

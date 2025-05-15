@@ -37,13 +37,13 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkQuery
+import com.google.aiedge.gallery.AppLifecycleProvider
+import com.google.aiedge.gallery.R
+import com.google.aiedge.gallery.worker.DownloadWorker
 import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import com.google.aiedge.gallery.AppLifecycleProvider
-import com.google.aiedge.gallery.R
-import com.google.aiedge.gallery.worker.DownloadWorker
 import java.util.UUID
 
 private const val TAG = "AGDownloadRepository"
@@ -89,6 +89,8 @@ class DefaultDownloadRepository(
     val builder = Data.Builder()
     val totalBytes = model.totalBytes + model.extraDataFiles.sumOf { it.sizeInBytes }
     val inputDataBuilder = builder.putString(KEY_MODEL_URL, model.url)
+      .putString(KEY_MODEL_VERSION, model.version)
+      .putString(KEY_MODEL_DOWNLOAD_MODEL_DIR, model.normalizedName)
       .putString(KEY_MODEL_DOWNLOAD_FILE_NAME, model.downloadFileName)
       .putBoolean(KEY_MODEL_IS_ZIP, model.isZip).putString(KEY_MODEL_UNZIPPED_DIR, model.unzipDir)
       .putLong(

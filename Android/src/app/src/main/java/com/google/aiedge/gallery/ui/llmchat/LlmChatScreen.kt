@@ -16,11 +16,15 @@
 
 package com.google.aiedge.gallery.ui.llmchat
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.aiedge.gallery.ui.ViewModelProvider
+import com.google.aiedge.gallery.ui.common.chat.ChatMessageInfo
 import com.google.aiedge.gallery.ui.common.chat.ChatMessageText
+import com.google.aiedge.gallery.ui.common.chat.ChatMessageWarning
 import com.google.aiedge.gallery.ui.common.chat.ChatView
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 import kotlinx.serialization.Serializable
@@ -40,6 +44,8 @@ fun LlmChatScreen(
     factory = ViewModelProvider.Factory
   ),
 ) {
+  val context = LocalContext.current
+
   ChatView(
     task = viewModel.task,
     viewModel = viewModel,
@@ -51,24 +57,42 @@ fun LlmChatScreen(
       )
       if (message is ChatMessageText) {
         modelManagerViewModel.addTextInputHistory(message.content)
-        viewModel.generateResponse(
-          model = model,
-          input = message.content,
-        )
+        viewModel.generateResponse(model = model, input = message.content, onError = {
+          viewModel.addMessage(
+            model = model,
+            message = ChatMessageWarning(content = "Error occurred. Re-initializing the engine.")
+          )
+
+          modelManagerViewModel.initializeModel(
+            context = context, task = viewModel.task, model = model, force = true
+          )
+        })
       }
     },
     onRunAgainClicked = { model, message ->
       if (message is ChatMessageText) {
-        viewModel.runAgain(model = model, message = message)
+        viewModel.runAgain(model = model, message = message, onError = {
+          viewModel.addMessage(
+            model = model,
+            message = ChatMessageWarning(content = "Error occurred. Re-initializing the engine.")
+          )
+
+          modelManagerViewModel.initializeModel(
+            context = context, task = viewModel.task, model = model, force = true
+          )
+        })
       }
     },
     onBenchmarkClicked = { model, message, warmUpIterations, benchmarkIterations ->
       if (message is ChatMessageText) {
         viewModel.benchmark(
-          model = model,
-          message = message
+          model = model, message = message
         )
       }
+    },
+    showStopButtonInInputWhenInProgress = true,
+    onStopButtonClicked = { model ->
+      viewModel.stopResponse(model = model)
     },
     navigateUp = navigateUp,
     modifier = modifier,

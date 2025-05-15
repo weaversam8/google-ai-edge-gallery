@@ -20,7 +20,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.aiedge.gallery.data.Model
-import com.google.aiedge.gallery.data.TASK_LLM_SINGLE_TURN
+import com.google.aiedge.gallery.data.TASK_LLM_USECASES
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.ui.common.chat.ChatMessageBenchmarkLlmResult
 import com.google.aiedge.gallery.ui.common.chat.Stat
@@ -64,7 +64,7 @@ private val STATS = listOf(
   Stat(id = "latency", label = "Latency", unit = "sec")
 )
 
-open class LlmSingleTurnViewModel(val task: Task = TASK_LLM_SINGLE_TURN) : ViewModel() {
+open class LlmSingleTurnViewModel(val task: Task = TASK_LLM_USECASES) : ViewModel() {
   private val _uiState = MutableStateFlow(createUiState(task = task))
   val uiState = _uiState.asStateFlow()
 

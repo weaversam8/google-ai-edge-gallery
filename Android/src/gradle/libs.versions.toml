@@ -18,7 +18,7 @@ gson = "2.12.1"
 lifecycleProcess = "2.8.7"
 #noinspection GradleDependency
 mediapipeTasksText = "0.10.21"
-mediapipeTasksGenai = "0.10.22"
+mediapipeTasksGenai = "0.10.24"
 mediapipeTasksImageGenerator = "0.10.21"
 commonmark = "1.0.0-alpha02"
 richtext = "1.0.0-alpha02"

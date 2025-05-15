@@ -16,8 +16,6 @@
 
 package com.google.aiedge.gallery.ui.modelmanager
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,7 +60,6 @@ import com.google.aiedge.gallery.ui.theme.customColors
 private const val TAG = "AGModelList"
 
 /** The list of models in the model manager. */
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ModelList(
   task: Task,
@@ -213,7 +210,6 @@ fun ClickableLink(
   }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun ModelListPreview() {

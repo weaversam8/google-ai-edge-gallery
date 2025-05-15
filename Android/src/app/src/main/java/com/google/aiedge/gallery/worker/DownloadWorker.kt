@@ -24,6 +24,7 @@ import androidx.work.WorkerParameters
 import com.google.aiedge.gallery.data.KEY_MODEL_DOWNLOAD_ACCESS_TOKEN
 import com.google.aiedge.gallery.data.KEY_MODEL_DOWNLOAD_ERROR_MESSAGE
 import com.google.aiedge.gallery.data.KEY_MODEL_DOWNLOAD_FILE_NAME
+import com.google.aiedge.gallery.data.KEY_MODEL_DOWNLOAD_MODEL_DIR
 import com.google.aiedge.gallery.data.KEY_MODEL_DOWNLOAD_RATE
 import com.google.aiedge.gallery.data.KEY_MODEL_DOWNLOAD_RECEIVED_BYTES
 import com.google.aiedge.gallery.data.KEY_MODEL_DOWNLOAD_REMAINING_MS
@@ -34,6 +35,7 @@ import com.google.aiedge.gallery.data.KEY_MODEL_START_UNZIPPING
 import com.google.aiedge.gallery.data.KEY_MODEL_TOTAL_BYTES
 import com.google.aiedge.gallery.data.KEY_MODEL_UNZIPPED_DIR
 import com.google.aiedge.gallery.data.KEY_MODEL_URL
+import com.google.aiedge.gallery.data.KEY_MODEL_VERSION
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
@@ -48,7 +50,10 @@ import java.util.zip.ZipInputStream
 
 private const val TAG = "AGDownloadWorker"
 
-data class UrlAndFileName(val url: String, val fileName: String)
+data class UrlAndFileName(
+  val url: String,
+  val fileName: String,
+)
 
 class DownloadWorker(context: Context, params: WorkerParameters) :
   CoroutineWorker(context, params) {
@@ -56,7 +61,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
 
   override suspend fun doWork(): Result {
     val fileUrl = inputData.getString(KEY_MODEL_URL)
+    val version = inputData.getString(KEY_MODEL_VERSION)!!
     val fileName = inputData.getString(KEY_MODEL_DOWNLOAD_FILE_NAME)
+    val modelDir = inputData.getString(KEY_MODEL_DOWNLOAD_MODEL_DIR)!!
     val isZip = inputData.getBoolean(KEY_MODEL_IS_ZIP, false)
     val unzippedDir = inputData.getString(KEY_MODEL_UNZIPPED_DIR)
     val extraDataFileUrls = inputData.getString(KEY_MODEL_EXTRA_DATA_URLS)?.split(",") ?: listOf()
@@ -96,8 +103,20 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
               connection.setRequestProperty("Authorization", "Bearer $accessToken")
             }
 
+            // Prepare output file's dir.
+            val outputDir = File(
+              applicationContext.getExternalFilesDir(null),
+              listOf(modelDir, version).joinToString(separator = File.separator)
+            )
+            if (!outputDir.exists()) {
+              outputDir.mkdirs()
+            }
+
             // Read the file and see if it is partially downloaded.
-            val outputFile = File(applicationContext.getExternalFilesDir(null), file.fileName)
+            val outputFile = File(
+              applicationContext.getExternalFilesDir(null),
+              listOf(modelDir, version, file.fileName).joinToString(separator = File.separator)
+            )
             val outputFileBytes = outputFile.length()
             if (outputFileBytes > 0) {
               Log.d(
@@ -192,14 +211,19 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
               setProgress(Data.Builder().putBoolean(KEY_MODEL_START_UNZIPPING, true).build())
 
               // Prepare target dir.
-              val destDir = File("${externalFilesDir}${File.separator}${unzippedDir}")
+              val destDir =
+                File(
+                  externalFilesDir,
+                  listOf(modelDir, version, unzippedDir).joinToString(File.separator)
+                )
               if (!destDir.exists()) {
                 destDir.mkdirs()
               }
 
               // Unzip.
               val unzipBuffer = ByteArray(4096)
-              val zipFilePath = "${externalFilesDir}${File.separator}${fileName}"
+              val zipFilePath =
+                "${externalFilesDir}${File.separator}$modelDir${File.separator}$version${File.separator}${fileName}"
               val zipIn = ZipInputStream(BufferedInputStream(FileInputStream(zipFilePath)))
               var zipEntry: ZipEntry? = zipIn.nextEntry
 

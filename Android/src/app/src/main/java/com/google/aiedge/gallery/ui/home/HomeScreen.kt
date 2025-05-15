@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -46,8 +47,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.NoteAdd
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +61,7 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -180,6 +185,7 @@ fun HomeScreen(
       TaskList(
         tasks = tasks,
         navigateToTaskScreen = navigateToTaskScreen,
+        loadingModelAllowlist = uiState.loadingModelAllowlist,
         modifier = Modifier.fillMaxSize(),
         contentPadding = innerPadding,
       )
@@ -285,12 +291,40 @@ fun HomeScreen(
       }
     }
   }
+
+  if (uiState.loadingModelAllowlistError.isNotEmpty()) {
+    AlertDialog(
+      icon = {
+        Icon(Icons.Rounded.Error, contentDescription = "", tint = MaterialTheme.colorScheme.error)
+      },
+      title = {
+        Text(uiState.loadingModelAllowlistError)
+      },
+      text = {
+        Text("Please check your internet connection and try again later.")
+      },
+      onDismissRequest = {
+        modelManagerViewModel.loadModelAllowlist()
+      },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            modelManagerViewModel.loadModelAllowlist()
+          }
+        ) {
+          Text("Retry")
+        }
+      },
+    )
+
+  }
 }
 
 @Composable
 private fun TaskList(
   tasks: List<Task>,
   navigateToTaskScreen: (Task) -> Unit,
+  loadingModelAllowlist: Boolean,
   modifier: Modifier = Modifier,
   contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
@@ -312,17 +346,37 @@ private fun TaskList(
         )
       }
 
-      // Cards.
-      items(tasks) { task ->
-        TaskCard(
-          task = task,
-          onClick = {
-            navigateToTaskScreen(task)
-          },
-          modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-        )
+      if (loadingModelAllowlist) {
+        item(key = "loading", span = { GridItemSpan(2) }) {
+          Row(
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(top = 32.dp)
+          ) {
+            CircularProgressIndicator(
+              trackColor = MaterialTheme.colorScheme.surfaceVariant,
+              strokeWidth = 3.dp,
+              modifier = Modifier
+                .padding(end = 8.dp)
+                .size(20.dp)
+            )
+            Text("Loading model list...", style = MaterialTheme.typography.bodyMedium)
+          }
+        }
+      } else {
+        // Cards.
+        items(tasks) { task ->
+          TaskCard(
+            task = task,
+            onClick = {
+              navigateToTaskScreen(task)
+            },
+            modifier = Modifier
+              .fillMaxWidth()
+              .aspectRatio(1f)
+          )
+        }
       }
 
       // Bottom padding.

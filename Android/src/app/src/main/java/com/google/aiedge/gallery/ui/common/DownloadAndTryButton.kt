@@ -28,12 +28,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -102,6 +105,7 @@ fun DownloadAndTryButton(
   val context = LocalContext.current
   var checkingToken by remember { mutableStateOf(false) }
   var showAgreementAckSheet by remember { mutableStateOf(false) }
+  var showErrorDialog by remember { mutableStateOf(false) }
   val sheetState = rememberModalBottomSheetState()
 
   // A launcher for requesting notification permission.
@@ -208,11 +212,17 @@ fun DownloadAndTryButton(
               TAG,
               "Model '${model.name}' is from HuggingFace. Checking if the url needs auth to download"
             )
-            if (modelManagerViewModel.getModelUrlResponse(model = model) == HttpURLConnection.HTTP_OK) {
+            val firstResponseCode = modelManagerViewModel.getModelUrlResponse(model = model)
+            if (firstResponseCode == HttpURLConnection.HTTP_OK) {
               Log.d(TAG, "Model '${model.name}' doesn't need auth. Start downloading the model...")
               withContext(Dispatchers.Main) {
                 startDownload(null)
               }
+              return@launch
+            } else if (firstResponseCode < 0) {
+              checkingToken = false
+              Log.e(TAG, "Unknown network error")
+              showErrorDialog = true
               return@launch
             }
             Log.d(TAG, "Model '${model.name}' needs auth. Start token exchange process...")
@@ -333,5 +343,31 @@ fun DownloadAndTryButton(
         }
       }
     }
+  }
+
+  if (showErrorDialog) {
+    AlertDialog(
+      icon = {
+        Icon(Icons.Rounded.Error, contentDescription = "", tint = MaterialTheme.colorScheme.error)
+      },
+      title = {
+        Text("Unknown network error")
+      },
+      text = {
+        Text("Please check your internet connection.")
+      },
+      onDismissRequest = {
+        showErrorDialog = false
+      },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            showErrorDialog = false
+          }
+        ) {
+          Text("Close")
+        }
+      },
+    )
   }
 }

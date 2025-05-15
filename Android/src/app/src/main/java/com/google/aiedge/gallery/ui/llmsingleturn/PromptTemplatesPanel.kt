@@ -218,6 +218,7 @@ fun PromptTemplatesPanel(
                 .clip(MessageBubbleShape(radius = bubbleBorderRadius))
                 .background(MaterialTheme.customColors.agentBubbleBgColor)
                 .padding(16.dp)
+                .focusRequester(focusRequester)
             )
           } else {
             TextField(

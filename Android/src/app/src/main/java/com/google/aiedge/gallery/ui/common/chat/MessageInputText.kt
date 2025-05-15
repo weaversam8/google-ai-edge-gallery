@@ -75,6 +75,7 @@ fun MessageInputText(
   modelManagerViewModel: ModelManagerViewModel,
   curMessage: String,
   inProgress: Boolean,
+  modelInitializing: Boolean,
   @StringRes textFieldPlaceHolderRes: Int,
   onValueChanged: (String) -> Unit,
   onSendMessage: (ChatMessage) -> Unit,
@@ -162,17 +163,19 @@ fun MessageInputText(
       Spacer(modifier = Modifier.width(8.dp))
 
       if (inProgress && showStopButtonWhenInProgress) {
-        IconButton(
-          onClick = onStopButtonClicked,
-          colors = IconButtonDefaults.iconButtonColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-          ),
-        ) {
-          Icon(
-            Icons.Rounded.Stop,
-            contentDescription = "",
-            tint = MaterialTheme.colorScheme.primary
-          )
+        if (!modelInitializing) {
+          IconButton(
+            onClick = onStopButtonClicked,
+            colors = IconButtonDefaults.iconButtonColors(
+              containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            ),
+          ) {
+            Icon(
+              Icons.Rounded.Stop,
+              contentDescription = "",
+              tint = MaterialTheme.colorScheme.primary
+            )
+          }
         }
       } // Send button. Only shown when text is not empty.
       else if (curMessage.isNotEmpty()) {
@@ -230,6 +233,7 @@ fun MessageInputTextPreview() {
         modelManagerViewModel = PreviewModelManagerViewModel(context = context),
         curMessage = "hello",
         inProgress = false,
+        modelInitializing = false,
         textFieldPlaceHolderRes = R.string.chat_textinput_placeholder,
         onValueChanged = {},
         onSendMessage = {},
@@ -239,6 +243,7 @@ fun MessageInputTextPreview() {
         modelManagerViewModel = PreviewModelManagerViewModel(context = context),
         curMessage = "hello",
         inProgress = true,
+        modelInitializing = false,
         textFieldPlaceHolderRes = R.string.chat_textinput_placeholder,
         onValueChanged = {},
         onSendMessage = {},
@@ -247,6 +252,7 @@ fun MessageInputTextPreview() {
         modelManagerViewModel = PreviewModelManagerViewModel(context = context),
         curMessage = "",
         inProgress = false,
+        modelInitializing = false,
         textFieldPlaceHolderRes = R.string.chat_textinput_placeholder,
         onValueChanged = {},
         onSendMessage = {},
@@ -255,6 +261,7 @@ fun MessageInputTextPreview() {
         modelManagerViewModel = PreviewModelManagerViewModel(context = context),
         curMessage = "",
         inProgress = true,
+        modelInitializing = false,
         textFieldPlaceHolderRes = R.string.chat_textinput_placeholder,
         onValueChanged = {},
         onSendMessage = {},

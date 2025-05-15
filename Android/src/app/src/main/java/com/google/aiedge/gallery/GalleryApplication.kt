@@ -23,7 +23,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.aiedge.gallery.data.AppContainer
 import com.google.aiedge.gallery.data.DefaultAppContainer
-import com.google.aiedge.gallery.ui.common.processTasks
 import com.google.aiedge.gallery.ui.theme.ThemeSettings
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_gallery_preferences")
@@ -34,9 +33,6 @@ class GalleryApplication : Application() {
 
   override fun onCreate() {
     super.onCreate()
-
-    // Process tasks.
-    processTasks()
 
     container = DefaultAppContainer(this, dataStore)
 

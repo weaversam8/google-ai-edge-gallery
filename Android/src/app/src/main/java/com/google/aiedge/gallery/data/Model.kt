@@ -20,6 +20,7 @@ import android.content.Context
 import com.google.aiedge.gallery.ui.common.chat.PromptTemplate
 import com.google.aiedge.gallery.ui.common.convertValueToTargetType
 import com.google.aiedge.gallery.ui.llmchat.createLlmChatConfigs
+import java.io.File
 
 data class ModelDataFile(
   val name: String,
@@ -33,16 +34,22 @@ enum class Accelerator(val label: String) {
 }
 
 const val IMPORTS_DIR = "__imports"
+private val NORMALIZE_NAME_REGEX = Regex("[^a-zA-Z0-9]")
 
 /** A model for a task */
 data class Model(
-  /** The Hugging Face model ID (if applicable). */
-  val hfModelId: String = "",
-
   /** The name (for display purpose) of the model. */
   val name: String,
 
-  /** The name of the downloaded model file. */
+  /** The version of the model. */
+  val version: String = "_",
+
+  /**
+   * The name of the downloaded model file.
+   *
+   * The final file path of the downloaded model will be:
+   * {context.getExternalFilesDir}/{normalizedName}/{version}/{downloadFileName}
+   */
   val downloadFileName: String,
 
   /** The URL to download the model from. */
@@ -88,6 +95,7 @@ data class Model(
   val imported: Boolean = false,
 
   // The following fields are managed by the app. Don't need to set manually.
+  var normalizedName: String = "",
   var instance: Any? = null,
   var initializing: Boolean = false,
   // TODO(jingjin): use a "queue" system to manage model init and cleanup.
@@ -96,6 +104,10 @@ data class Model(
   var totalBytes: Long = 0L,
   var accessToken: String? = null,
 ) {
+  init {
+    normalizedName = NORMALIZE_NAME_REGEX.replace(name, "_")
+  }
+
   fun preProcess() {
     val configValues: MutableMap<String, Any> = mutableMapOf()
     for (config in this.configs) {
@@ -106,11 +118,22 @@ data class Model(
   }
 
   fun getPath(context: Context, fileName: String = downloadFileName): String {
-    val baseDir = "${context.getExternalFilesDir(null)}"
+    if (imported) {
+      return listOf(context.getExternalFilesDir(null)?.absolutePath ?: "", fileName).joinToString(
+        File.separator
+      )
+    }
+
+    val baseDir =
+      listOf(
+        context.getExternalFilesDir(null)?.absolutePath ?: "",
+        normalizedName,
+        version
+      ).joinToString(File.separator)
     return if (this.isZip && this.unzipDir.isNotEmpty()) {
       "$baseDir/${this.unzipDir}"
     } else {
-      "$baseDir/${fileName}"
+      "$baseDir/$fileName"
     }
   }
 

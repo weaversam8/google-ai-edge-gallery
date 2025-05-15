@@ -269,6 +269,9 @@ fun ChatPanel(
               // Info.
               is ChatMessageInfo -> MessageBodyInfo(message = message)
 
+              // Warning
+              is ChatMessageWarning -> MessageBodyWarning(message = message)
+
               // Config values change.
               is ChatMessageConfigValuesChange -> MessageBodyConfigUpdate(message = message)
 
@@ -433,6 +436,7 @@ fun ChatPanel(
           modelManagerViewModel = modelManagerViewModel,
           curMessage = curMessage,
           inProgress = uiState.inProgress,
+          modelInitializing = modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING,
           textFieldPlaceHolderRes = task.textInputPlaceHolderRes,
           onValueChanged = { curMessage = it },
           onSendMessage = {

@@ -46,7 +46,7 @@ import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.TASK_IMAGE_CLASSIFICATION
 import com.google.aiedge.gallery.data.TASK_IMAGE_GENERATION
 import com.google.aiedge.gallery.data.TASK_LLM_CHAT
-import com.google.aiedge.gallery.data.TASK_LLM_SINGLE_TURN
+import com.google.aiedge.gallery.data.TASK_LLM_USECASES
 import com.google.aiedge.gallery.data.TASK_TEXT_CLASSIFICATION
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.data.TaskType
@@ -231,7 +231,7 @@ fun GalleryNavHost(
       enterTransition = { slideEnter() },
       exitTransition = { slideExit() },
     ) {
-      getModelFromNavigationParam(it, TASK_LLM_SINGLE_TURN)?.let { defaultModel ->
+      getModelFromNavigationParam(it, TASK_LLM_USECASES)?.let { defaultModel ->
         modelManagerViewModel.selectModel(defaultModel)
 
         LlmSingleTurnScreen(
@@ -271,7 +271,7 @@ fun navigateToTaskScreen(
     TaskType.TEXT_CLASSIFICATION -> navController.navigate("${TextClassificationDestination.route}/${modelName}")
     TaskType.IMAGE_CLASSIFICATION -> navController.navigate("${ImageClassificationDestination.route}/${modelName}")
     TaskType.LLM_CHAT -> navController.navigate("${LlmChatDestination.route}/${modelName}")
-    TaskType.LLM_SINGLE_TURN -> navController.navigate("${LlmSingleTurnDestination.route}/${modelName}")
+    TaskType.LLM_USECASES -> navController.navigate("${LlmSingleTurnDestination.route}/${modelName}")
     TaskType.IMAGE_GENERATION -> navController.navigate("${ImageGenerationDestination.route}/${modelName}")
     TaskType.TEST_TASK_1 -> {}
     TaskType.TEST_TASK_2 -> {}

@@ -27,15 +27,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.google.aiedge.gallery.R
 
 /** Type of task. */
-enum class TaskType(val label: String) {
-  TEXT_CLASSIFICATION("Text Classification"),
-  IMAGE_CLASSIFICATION("Image Classification"),
-  IMAGE_GENERATION("Image Generation"),
-  LLM_CHAT("LLM Chat"),
-  LLM_SINGLE_TURN("LLM Use Cases"),
+enum class TaskType(val label: String, val id: String) {
+  TEXT_CLASSIFICATION(label = "Text Classification", id = "text_classification"),
+  IMAGE_CLASSIFICATION(label = "Image Classification", id = "image_classification"),
+  IMAGE_GENERATION(label = "Image Generation", id = "image_generation"),
+  LLM_CHAT(label = "LLM Chat", id = "llm_chat"),
+  LLM_USECASES(label = "LLM Use Cases", id = "llm_usecases"),
 
-  TEST_TASK_1("Test task 1"),
-  TEST_TASK_2("Test task 2")
+  TEST_TASK_1(label = "Test task 1", id = "test_task_1"),
+  TEST_TASK_2(label = "Test task 2", id = "test_task_2")
 }
 
 /** Data class for a task listed in home screen. */
@@ -91,17 +91,19 @@ val TASK_IMAGE_CLASSIFICATION = Task(
 val TASK_LLM_CHAT = Task(
   type = TaskType.LLM_CHAT,
   icon = Icons.Outlined.Forum,
-  models = MODELS_LLM,
+//  models = MODELS_LLM,
+  models = mutableListOf(),
   description = "Chat with a on-device large language model",
   docUrl = "https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android",
   sourceCodeUrl = "https://github.com/google-ai-edge/gallery/blob/main/Android/src/app/src/main/java/com/google/aiedge/gallery/ui/llmchat/LlmChatModelHelper.kt",
   textInputPlaceHolderRes = R.string.text_input_placeholder_llm_chat
 )
 
-val TASK_LLM_SINGLE_TURN = Task(
-  type = TaskType.LLM_SINGLE_TURN,
+val TASK_LLM_USECASES = Task(
+  type = TaskType.LLM_USECASES,
   icon = Icons.Outlined.Widgets,
-  models = MODELS_LLM,
+//  models = MODELS_LLM,
+  models = mutableListOf(),
   description = "Single turn use cases with on-device large language model",
   docUrl = "https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android",
   sourceCodeUrl = "https://github.com/google-ai-edge/gallery/blob/main/Android/src/app/src/main/java/com/google/aiedge/gallery/ui/llmchat/LlmChatModelHelper.kt",
@@ -123,7 +125,7 @@ val TASKS: List<Task> = listOf(
 //  TASK_TEXT_CLASSIFICATION,
 //  TASK_IMAGE_CLASSIFICATION,
 //  TASK_IMAGE_GENERATION,
-  TASK_LLM_SINGLE_TURN,
+  TASK_LLM_USECASES,
   TASK_LLM_CHAT,
 )
 

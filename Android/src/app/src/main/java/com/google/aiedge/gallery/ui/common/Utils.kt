@@ -484,5 +484,7 @@ fun processLlmResponse(response: String): String {
     }
   }
 
+  newContent = newContent.replace("\\n", "\n")
+
   return newContent
 }

@@ -16,7 +16,6 @@
 
 package com.google.aiedge.gallery.data
 
-import com.google.aiedge.gallery.ui.common.ensureValidFileName
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -26,15 +25,6 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonPrimitive
-
-@Serializable
-data class HfModelSummary(val modelId: String)
-
-@Serializable
-data class HfModelDetails(val id: String, val siblings: List<HfModelFile>)
-
-@Serializable
-data class HfModelFile(val rfilename: String)
 
 @Serializable(with = ConfigValueSerializer::class)
 sealed class ConfigValue {
@@ -82,64 +72,6 @@ object ConfigValueSerializer : KSerializer<ConfigValue> {
 
       else -> throw SerializationException("Expected JsonPrimitive")
     }
-  }
-}
-
-@Serializable
-data class HfModel(
-  var id: String = "",
-  val task: String,
-  val name: String,
-  val url: String = "",
-  val file: String = "",
-  val sizeInBytes: Long,
-  val configs: Map<String, ConfigValue>,
-) {
-  fun toModel(): Model {
-    val parts = if (url.isNotEmpty()) {
-      url.split('/')
-    } else if (file.isNotEmpty()) {
-      listOf(file)
-    } else {
-      listOf("")
-    }
-    val fileName = ensureValidFileName("${id}_${(parts.lastOrNull() ?: "")}")
-
-    // Generate configs based on the given default values.
-//    val configs: List<Config> = when (task) {
-//      TASK_LLM_CHAT.type.label -> createLLmChatConfig(defaults = configs)
-//      // todo: add configs for other types.
-//      else -> listOf()
-//    }
-    // todo: fix when loading from models.json
-    val configs: List<Config> = listOf()
-
-    // Construct url.
-    var modelUrl = url
-    if (modelUrl.isEmpty() && file.isNotEmpty()) {
-      modelUrl = "https://huggingface.co/${id}/resolve/main/${file}?download=true"
-    }
-
-    // Other parameters.
-    val showBenchmarkButton = when (task) {
-      TASK_LLM_CHAT.type.label -> false
-      else -> true
-    }
-    val showRunAgainButton = when (task) {
-      TASK_LLM_CHAT.type.label -> false
-      else -> true
-    }
-
-    return Model(
-      hfModelId = id,
-      name = name,
-      url = modelUrl,
-      sizeInBytes = sizeInBytes,
-      downloadFileName = fileName,
-      configs = configs,
-      showBenchmarkButton = showBenchmarkButton,
-      showRunAgainButton = showRunAgainButton,
-    )
   }
 }
 

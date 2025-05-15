@@ -24,6 +24,7 @@ import com.google.aiedge.gallery.data.Model
 
 enum class ChatMessageType {
   INFO,
+  WARNING,
   TEXT,
   IMAGE,
   IMAGE_WITH_HISTORY,
@@ -56,6 +57,10 @@ class ChatMessageLoading : ChatMessage(type = ChatMessageType.LOADING, side = Ch
 /** Chat message for info (help). */
 class ChatMessageInfo(val content: String) :
   ChatMessage(type = ChatMessageType.INFO, side = ChatSide.SYSTEM)
+
+/** Chat message for info (help). */
+class ChatMessageWarning(val content: String) :
+  ChatMessage(type = ChatMessageType.WARNING, side = ChatSide.SYSTEM)
 
 /** Chat message for config values change. */
 class ChatMessageConfigValuesChange(

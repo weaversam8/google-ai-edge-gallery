@@ -136,7 +136,7 @@ fun HomeScreen(
   val snackbarHostState = remember { SnackbarHostState() }
   val scope = rememberCoroutineScope()
 
-  val tasks = uiState.tasks
+  val nonEmptyTasks = uiState.tasks.filter { it.models.size > 0 }
   val loadingHfModels = uiState.loadingHfModels
 
   val filePickerLauncher: ActivityResultLauncher<Intent> = rememberLauncherForActivityResult(
@@ -183,14 +183,14 @@ fun HomeScreen(
   ) { innerPadding ->
     Box(contentAlignment = Alignment.BottomCenter, modifier = Modifier.fillMaxSize()) {
       TaskList(
-        tasks = tasks,
+        tasks = nonEmptyTasks,
         navigateToTaskScreen = navigateToTaskScreen,
         loadingModelAllowlist = uiState.loadingModelAllowlist,
         modifier = Modifier.fillMaxSize(),
         contentPadding = innerPadding,
       )
 
-      SnackbarHost(hostState = snackbarHostState, modifier = Modifier.padding(bottom = 16.dp))
+      SnackbarHost(hostState = snackbarHostState, modifier = Modifier.padding(bottom = 32.dp))
     }
   }
 
@@ -285,7 +285,7 @@ fun HomeScreen(
 
             // Show a snack bar for successful import.
             scope.launch {
-              snackbarHostState.showSnackbar("✅ Model imported successfully")
+              snackbarHostState.showSnackbar("Model imported successfully")
             }
           })
       }
@@ -316,7 +316,6 @@ fun HomeScreen(
         }
       },
     )
-
   }
 }
 

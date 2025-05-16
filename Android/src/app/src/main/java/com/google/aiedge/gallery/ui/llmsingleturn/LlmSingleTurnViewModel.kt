@@ -23,6 +23,7 @@ import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.TASK_LLM_USECASES
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.ui.common.chat.ChatMessageBenchmarkLlmResult
+import com.google.aiedge.gallery.ui.common.chat.ChatMessageLoading
 import com.google.aiedge.gallery.ui.common.chat.Stat
 import com.google.aiedge.gallery.ui.common.processLlmResponse
 import com.google.aiedge.gallery.ui.llmchat.LlmChatModelHelper
@@ -191,6 +192,15 @@ open class LlmSingleTurnViewModel(val task: Task = TASK_LLM_USECASES) : ViewMode
       val newBenchmarks = currentBenchmark.toMutableMap()
       newBenchmarks[model.name] = modelBenchmarks
       currentState.copy(benchmarkByModel = newBenchmarks)
+    }
+  }
+
+  fun stopResponse(model: Model) {
+    Log.d(TAG, "Stopping response for model ${model.name}...")
+    viewModelScope.launch(Dispatchers.Default) {
+      setInProgress(false)
+      val instance = model.instance as LlmModelInstance
+      instance.session.cancelGenerateResponseAsync()
     }
   }
 

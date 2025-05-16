@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -54,6 +55,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.Task
@@ -77,6 +81,10 @@ fun ModelPickerChipsPager(
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val scope = rememberCoroutineScope()
+  val density = LocalDensity.current
+  val windowInfo = LocalWindowInfo.current
+  val screenWidthDp =
+    remember { with(density) { windowInfo.containerSize.width.toDp() } }
 
   val pagerState = rememberPagerState(initialPage = task.models.indexOf(initialModel),
     pageCount = { task.models.size })
@@ -140,7 +148,12 @@ fun ModelPickerChipsPager(
           Text(
             model.name,
             style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(start = 4.dp),
+            modifier = Modifier
+              .padding(start = 4.dp)
+              .widthIn(0.dp, screenWidthDp - 250.dp),
+            maxLines = 1,
+            overflow = TextOverflow.MiddleEllipsis
+
           )
           Icon(
             Icons.Rounded.ArrowDropDown,

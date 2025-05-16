@@ -16,15 +16,14 @@
 
 package com.google.aiedge.gallery.ui.llmchat
 
-import android.util.Log
+import android.graphics.Bitmap
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.aiedge.gallery.ui.ViewModelProvider
-import com.google.aiedge.gallery.ui.common.chat.ChatMessageInfo
+import com.google.aiedge.gallery.ui.common.chat.ChatMessageImage
 import com.google.aiedge.gallery.ui.common.chat.ChatMessageText
-import com.google.aiedge.gallery.ui.common.chat.ChatMessageWarning
 import com.google.aiedge.gallery.ui.common.chat.ChatView
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 import kotlinx.serialization.Serializable
@@ -33,6 +32,11 @@ import kotlinx.serialization.Serializable
 object LlmChatDestination {
   @Serializable
   val route = "LlmChatRoute"
+}
+
+object LlmImageToTextDestination {
+  @Serializable
+  val route = "LlmImageToTextRoute"
 }
 
 @Composable
@@ -44,27 +48,71 @@ fun LlmChatScreen(
     factory = ViewModelProvider.Factory
   ),
 ) {
+  ChatViewWrapper(
+    viewModel = viewModel,
+    modelManagerViewModel = modelManagerViewModel,
+    navigateUp = navigateUp,
+    modifier = modifier,
+  )
+}
+
+@Composable
+fun LlmImageToTextScreen(
+  modelManagerViewModel: ModelManagerViewModel,
+  navigateUp: () -> Unit,
+  modifier: Modifier = Modifier,
+  viewModel: LlmImageToTextViewModel = viewModel(
+    factory = ViewModelProvider.Factory
+  ),
+) {
+  ChatViewWrapper(
+    viewModel = viewModel,
+    modelManagerViewModel = modelManagerViewModel,
+    navigateUp = navigateUp,
+    modifier = modifier,
+  )
+}
+
+@Composable
+fun ChatViewWrapper(
+  viewModel: LlmChatViewModel,
+  modelManagerViewModel: ModelManagerViewModel,
+  navigateUp: () -> Unit,
+  modifier: Modifier = Modifier
+) {
   val context = LocalContext.current
 
   ChatView(
     task = viewModel.task,
     viewModel = viewModel,
     modelManagerViewModel = modelManagerViewModel,
-    onSendMessage = { model, message ->
-      viewModel.addMessage(
-        model = model,
-        message = message,
-      )
-      if (message is ChatMessageText) {
-        modelManagerViewModel.addTextInputHistory(message.content)
-        viewModel.generateResponse(model = model, input = message.content, onError = {
-          viewModel.addMessage(
-            model = model,
-            message = ChatMessageWarning(content = "Error occurred. Re-initializing the engine.")
-          )
+    onSendMessage = { model, messages ->
+      for (message in messages) {
+        viewModel.addMessage(
+          model = model,
+          message = message,
+        )
+      }
 
-          modelManagerViewModel.initializeModel(
-            context = context, task = viewModel.task, model = model, force = true
+      var text = ""
+      var image: Bitmap? = null
+      var chatMessageText: ChatMessageText? = null
+      for (message in messages) {
+        if (message is ChatMessageText) {
+          chatMessageText = message
+          text = message.content
+        } else if (message is ChatMessageImage) {
+          image = message.bitmap
+        }
+      }
+      if (text.isNotEmpty() && chatMessageText != null) {
+        modelManagerViewModel.addTextInputHistory(text)
+        viewModel.generateResponse(model = model, input = text, image = image, onError = {
+          viewModel.handleError(
+            context = context,
+            model = model,
+            modelManagerViewModel = modelManagerViewModel,
+            triggeredMessage = chatMessageText,
           )
         })
       }
@@ -72,13 +120,11 @@ fun LlmChatScreen(
     onRunAgainClicked = { model, message ->
       if (message is ChatMessageText) {
         viewModel.runAgain(model = model, message = message, onError = {
-          viewModel.addMessage(
+          viewModel.handleError(
+            context = context,
             model = model,
-            message = ChatMessageWarning(content = "Error occurred. Re-initializing the engine.")
-          )
-
-          modelManagerViewModel.initializeModel(
-            context = context, task = viewModel.task, model = model, force = true
+            modelManagerViewModel = modelManagerViewModel,
+            triggeredMessage = message,
           )
         })
       }
@@ -90,6 +136,9 @@ fun LlmChatScreen(
         )
       }
     },
+    onResetSessionClicked = { model ->
+      viewModel.resetSession(model = model)
+    },
     showStopButtonInInputWhenInProgress = true,
     onStopButtonClicked = { model ->
       viewModel.stopResponse(model = model)
@@ -98,4 +147,3 @@ fun LlmChatScreen(
     modifier = modifier,
   )
 }
-

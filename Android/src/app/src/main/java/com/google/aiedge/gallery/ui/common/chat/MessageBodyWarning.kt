@@ -46,7 +46,11 @@ fun MessageBodyWarning(message: ChatMessageWarning) {
         .clip(RoundedCornerShape(16.dp))
         .background(MaterialTheme.colorScheme.tertiaryContainer)
     ) {
-      MarkdownText(text = message.content, modifier = Modifier.padding(12.dp), smallFontSize = true)
+      MarkdownText(
+        text = message.content,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        smallFontSize = true
+      )
     }
   }
 }

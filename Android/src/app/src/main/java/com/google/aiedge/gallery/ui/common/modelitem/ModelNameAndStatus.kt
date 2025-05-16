@@ -76,7 +76,7 @@ fun ModelNameAndStatus(
       Text(
         model.name,
         maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
+        overflow = TextOverflow.MiddleEllipsis,
         style = MaterialTheme.typography.titleMedium,
         modifier = modifier,
       )

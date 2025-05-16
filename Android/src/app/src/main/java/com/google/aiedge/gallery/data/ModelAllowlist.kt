@@ -35,6 +35,7 @@ data class AllowedModel(
   val defaultConfig: Map<String, ConfigValue>,
   val taskTypes: List<String>,
   val disabled: Boolean? = null,
+  val llmSupportImage: Boolean? = null,
 ) {
   fun toModel(): Model {
     // Construct HF download url.
@@ -48,7 +49,7 @@ data class AllowedModel(
       var defaultTopK: Int = DEFAULT_TOPK
       var defaultTopP: Float = DEFAULT_TOPP
       var defaultTemperature: Float = DEFAULT_TEMPERATURE
-      var defaultMaxToken: Int = 1024
+      var defaultMaxToken = 1024
       var accelerators: List<Accelerator> = DEFAULT_ACCELERATORS
       if (defaultConfig.containsKey("topK")) {
         defaultTopK = getIntConfigValue(defaultConfig["topK"], defaultTopK)
@@ -84,9 +85,10 @@ data class AllowedModel(
 
     // Misc.
     var showBenchmarkButton = true
-    val showRunAgainButton = true
-    if (taskTypes.contains(TASK_LLM_CHAT.type.id) || taskTypes.contains(TASK_LLM_USECASES.type.id)) {
+    var showRunAgainButton = true
+    if (isLlmModel) {
       showBenchmarkButton = false
+      showRunAgainButton = false
     }
 
     return Model(
@@ -99,7 +101,8 @@ data class AllowedModel(
       downloadFileName = modelFile,
       showBenchmarkButton = showBenchmarkButton,
       showRunAgainButton = showRunAgainButton,
-      learnMoreUrl = "https://huggingface.co/${modelId}"
+      learnMoreUrl = "https://huggingface.co/${modelId}",
+      llmSupportImage = llmSupportImage == true,
     )
   }
 

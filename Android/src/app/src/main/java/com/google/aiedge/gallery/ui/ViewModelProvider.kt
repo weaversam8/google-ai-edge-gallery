@@ -25,6 +25,7 @@ import com.google.aiedge.gallery.GalleryApplication
 import com.google.aiedge.gallery.ui.imageclassification.ImageClassificationViewModel
 import com.google.aiedge.gallery.ui.imagegeneration.ImageGenerationViewModel
 import com.google.aiedge.gallery.ui.llmchat.LlmChatViewModel
+import com.google.aiedge.gallery.ui.llmchat.LlmImageToTextViewModel
 import com.google.aiedge.gallery.ui.llmsingleturn.LlmSingleTurnViewModel
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.aiedge.gallery.ui.textclassification.TextClassificationViewModel
@@ -62,6 +63,12 @@ object ViewModelProvider {
       LlmSingleTurnViewModel()
     }
 
+    // Initializer for LlmImageToTextViewModel.
+    initializer {
+      LlmImageToTextViewModel()
+    }
+
+    // Initializer for ImageGenerationViewModel.
     initializer {
       ImageGenerationViewModel()
     }

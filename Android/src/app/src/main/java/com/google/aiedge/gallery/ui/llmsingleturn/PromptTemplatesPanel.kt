@@ -43,11 +43,13 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -86,9 +88,11 @@ import androidx.compose.ui.unit.dp
 import com.google.aiedge.gallery.R
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.ui.common.chat.MessageBubbleShape
+import com.google.aiedge.gallery.ui.modelmanager.ModelInitializationStatusType
+import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.aiedge.gallery.ui.theme.customColors
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val promptTemplateTypes: List<PromptTemplateType> = PromptTemplateType.entries
 private val TAB_TITLES = PromptTemplateType.entries.map { it.label }
@@ -101,11 +105,14 @@ const val FULL_PROMPT_SWITCH_KEY = "full_prompt"
 fun PromptTemplatesPanel(
   model: Model,
   viewModel: LlmSingleTurnViewModel,
+  modelManagerViewModel: ModelManagerViewModel,
   onSend: (fullPrompt: String) -> Unit,
+  onStopButtonClicked: (Model) -> Unit,
   modifier: Modifier = Modifier
 ) {
   val scope = rememberCoroutineScope()
   val uiState by viewModel.uiState.collectAsState()
+  val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
   val selectedPromptTemplateType = uiState.selectedPromptTemplateType
   val inProgress = uiState.inProgress
   var selectedTabIndex by remember { mutableIntStateOf(0) }
@@ -123,6 +130,8 @@ fun PromptTemplatesPanel(
   val focusManager = LocalFocusManager.current
   val interactionSource = remember { MutableInteractionSource() }
   val expandedStates = remember { mutableStateMapOf<String, Boolean>() }
+  val modelInitializationStatus =
+    modelManagerUiState.modelInitializationStatus[model.name]
 
   // Update input editor values when prompt template changes.
   LaunchedEffect(selectedPromptTemplateType) {
@@ -328,29 +337,49 @@ fun PromptTemplatesPanel(
             )
           }
 
-          // Send button
-          OutlinedIconButton(
-            enabled = !inProgress && curTextInputContent.isNotEmpty(),
-            onClick = {
-              focusManager.clearFocus()
-              onSend(fullPrompt.text)
-            },
-            colors = IconButtonDefaults.iconButtonColors(
-              containerColor = MaterialTheme.colorScheme.secondaryContainer,
-              disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
-              contentColor = MaterialTheme.colorScheme.primary,
-              disabledContentColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-            ),
-            border = BorderStroke(width = 1.dp, color = MaterialTheme.colorScheme.surface),
-            modifier = Modifier.size(ICON_BUTTON_SIZE)
-          ) {
-            Icon(
-              Icons.AutoMirrored.Rounded.Send,
-              contentDescription = "",
-              modifier = Modifier
-                .size(20.dp)
-                .offset(x = 2.dp),
-            )
+          val modelInitializing =
+            modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING
+          if (inProgress && !modelInitializing) {
+            IconButton(
+              onClick = {
+                onStopButtonClicked(model)
+              },
+              colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+              ),
+              modifier = Modifier.size(ICON_BUTTON_SIZE)
+            ) {
+              Icon(
+                Icons.Rounded.Stop,
+                contentDescription = "",
+                tint = MaterialTheme.colorScheme.primary
+              )
+            }
+          } else {
+            // Send button
+            OutlinedIconButton(
+              enabled = !inProgress && curTextInputContent.isNotEmpty(),
+              onClick = {
+                focusManager.clearFocus()
+                onSend(fullPrompt.text)
+              },
+              colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
+                contentColor = MaterialTheme.colorScheme.primary,
+                disabledContentColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+              ),
+              border = BorderStroke(width = 1.dp, color = MaterialTheme.colorScheme.surface),
+              modifier = Modifier.size(ICON_BUTTON_SIZE)
+            ) {
+              Icon(
+                Icons.AutoMirrored.Rounded.Send,
+                contentDescription = "",
+                modifier = Modifier
+                  .size(20.dp)
+                  .offset(x = 2.dp),
+              )
+            }
           }
         }
       }

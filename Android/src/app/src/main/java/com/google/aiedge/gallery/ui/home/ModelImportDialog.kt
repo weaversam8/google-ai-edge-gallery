@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.google.aiedge.gallery.data.Accelerator
+import com.google.aiedge.gallery.data.BooleanSwitchConfig
 import com.google.aiedge.gallery.data.Config
 import com.google.aiedge.gallery.data.ConfigKey
 import com.google.aiedge.gallery.data.IMPORTS_DIR
@@ -110,6 +111,10 @@ private val IMPORT_CONFIGS_LLM: List<Config> = listOf(
     sliderMax = 2.0f,
     defaultValue = DEFAULT_TEMPERATURE,
     valueType = ValueType.FLOAT
+  ),
+  BooleanSwitchConfig(
+    key = ConfigKey.SUPPORT_IMAGE,
+    defaultValue = false,
   ),
   SegmentedButtonConfig(
     key = ConfigKey.COMPATIBLE_ACCELERATORS,

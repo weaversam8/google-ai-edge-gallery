@@ -155,9 +155,14 @@ fun LlmSingleTurnScreen(
             PromptTemplatesPanel(
               model = selectedModel,
               viewModel = viewModel,
+              modelManagerViewModel = modelManagerViewModel,
               onSend = { fullPrompt ->
                 viewModel.generateResponse(model = selectedModel, input = fullPrompt)
-              }, modifier = Modifier.fillMaxSize()
+              },
+              onStopButtonClicked = { model ->
+                viewModel.stopResponse(model = model)
+              },
+              modifier = Modifier.fillMaxSize()
             )
           },
           bottomView = {

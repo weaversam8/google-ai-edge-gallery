@@ -50,7 +50,8 @@ fun ImageClassificationScreen(
     task = viewModel.task,
     viewModel = viewModel,
     modelManagerViewModel = modelManagerViewModel,
-    onSendMessage = { model, message ->
+    onSendMessage = { model, messages ->
+      val message = messages[0]
       viewModel.addMessage(
         model = model,
         message = message,

@@ -17,13 +17,17 @@
 package com.google.aiedge.gallery.ui.common
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.MapsUgc
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
@@ -47,6 +52,7 @@ import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.ui.common.chat.ConfigDialog
+import com.google.aiedge.gallery.ui.modelmanager.ModelInitializationStatusType
 import com.google.aiedge.gallery.ui.modelmanager.ModelManagerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,12 +64,17 @@ fun ModelPageAppBar(
   onBackClicked: () -> Unit,
   onModelSelected: (Model) -> Unit,
   modifier: Modifier = Modifier,
+  isResettingSession: Boolean = false,
+  onResetSessionClicked: (Model) -> Unit = {},
+  showResetSessionButton: Boolean = false,
   onConfigChanged: (oldConfigValues: Map<String, Any>, newConfigValues: Map<String, Any>) -> Unit = { _, _ -> },
 ) {
   var showConfigDialog by remember { mutableStateOf(false) }
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
   val context = LocalContext.current
   val curDownloadStatus = modelManagerUiState.modelDownloadStatus[model.name]
+  val modelInitializationStatus =
+    modelManagerUiState.modelInitializationStatus[model.name]
 
   CenterAlignedTopAppBar(title = {
     Column(
@@ -110,19 +121,58 @@ fun ModelPageAppBar(
     actions = {
       val showConfigButton =
         model.configs.isNotEmpty() && curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED
-      IconButton(
-        onClick = {
-          showConfigDialog = true
-        },
-        enabled = showConfigButton,
-        modifier = Modifier.alpha(if (showConfigButton) 1f else 0f)
-      ) {
-        Icon(
-          imageVector = Icons.Rounded.Settings,
-          contentDescription = "",
-          tint = MaterialTheme.colorScheme.primary
-        )
+      Box(modifier = Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+        var configButtonOffset = 0.dp
+        if (showConfigButton && showResetSessionButton) {
+          configButtonOffset = (-40).dp
+        }
+        val isModelInitializing =
+          modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING
+        if (showConfigButton) {
+          IconButton(
+            onClick = {
+              showConfigDialog = true
+            },
+            enabled = !isModelInitializing,
+            modifier = Modifier
+              .scale(0.75f)
+              .offset(x = configButtonOffset)
+              .alpha(if (isModelInitializing) 0.5f else 1f)
+          ) {
+            Icon(
+              imageVector = Icons.Rounded.Tune,
+              contentDescription = "",
+              tint = MaterialTheme.colorScheme.primary
+            )
+          }
+        }
+        if (showResetSessionButton) {
+          if (isResettingSession) {
+            CircularProgressIndicator(
+              trackColor = MaterialTheme.colorScheme.surfaceVariant,
+              strokeWidth = 2.dp,
+              modifier = Modifier.size(16.dp)
+            )
+          } else {
+            IconButton(
+              onClick = {
+                onResetSessionClicked(model)
+              },
+              enabled = !isModelInitializing,
+              modifier = Modifier
+                .scale(0.75f)
+                .alpha(if (isModelInitializing) 0.5f else 1f)
+            ) {
+              Icon(
+                imageVector = Icons.Rounded.MapsUgc,
+                contentDescription = "",
+                tint = MaterialTheme.colorScheme.primary
+              )
+            }
+          }
+        }
       }
+
     })
 
   // Config dialog.

@@ -17,11 +17,14 @@
 package com.google.aiedge.gallery.ui.llmchat
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.util.Log
 import com.google.aiedge.gallery.data.Accelerator
 import com.google.aiedge.gallery.data.ConfigKey
 import com.google.aiedge.gallery.data.Model
 import com.google.aiedge.gallery.ui.common.cleanUpMediapipeTaskErrorMessage
+import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.tasks.genai.llminference.GraphOptions
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 
@@ -55,7 +58,9 @@ object LlmChatModelHelper {
     }
     val options =
       LlmInference.LlmInferenceOptions.builder().setModelPath(model.getPath(context = context))
-        .setMaxTokens(maxTokens).setPreferredBackend(preferredBackend).build()
+        .setMaxTokens(maxTokens).setPreferredBackend(preferredBackend)
+        .setMaxNumImages(if (model.llmSupportImage) 1 else 0)
+        .build()
 
     // Create an instance of the LLM Inference task
     try {
@@ -64,7 +69,10 @@ object LlmChatModelHelper {
       val session = LlmInferenceSession.createFromOptions(
         llmInference,
         LlmInferenceSession.LlmInferenceSessionOptions.builder().setTopK(topK).setTopP(topP)
-          .setTemperature(temperature).build()
+          .setTemperature(temperature)
+          .setGraphOptions(
+            GraphOptions.builder().setEnableVisionModality(model.llmSupportImage).build()
+          ).build()
       )
       model.instance = LlmModelInstance(engine = llmInference, session = session)
     } catch (e: Exception) {
@@ -75,6 +83,8 @@ object LlmChatModelHelper {
   }
 
   fun resetSession(model: Model) {
+    Log.d(TAG, "Resetting session for model '${model.name}'")
+
     val instance = model.instance as LlmModelInstance? ?: return
     val session = instance.session
     session.close()
@@ -87,9 +97,13 @@ object LlmChatModelHelper {
     val newSession = LlmInferenceSession.createFromOptions(
       inference,
       LlmInferenceSession.LlmInferenceSessionOptions.builder().setTopK(topK).setTopP(topP)
-        .setTemperature(temperature).build()
+        .setTemperature(temperature)
+        .setGraphOptions(
+          GraphOptions.builder().setEnableVisionModality(model.llmSupportImage).build()
+        ).build()
     )
     instance.session = newSession
+    Log.d(TAG, "Resetting done")
   }
 
   fun cleanUp(model: Model) {
@@ -118,6 +132,7 @@ object LlmChatModelHelper {
     resultListener: ResultListener,
     cleanUpListener: CleanUpListener,
     singleTurn: Boolean = false,
+    image: Bitmap? = null,
   ) {
     if (singleTurn) {
       resetSession(model = model)
@@ -132,6 +147,9 @@ object LlmChatModelHelper {
     // Start async inference.
     val session = instance.session
     session.addQueryChunk(input)
+    if (image != null) {
+      session.addImage(BitmapImageBuilder(image).build())
+    }
     session.generateResponseAsync(resultListener)
   }
 }

@@ -21,6 +21,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,6 +51,24 @@ fun ModelManager(
   var title = "${task.type.label} model"
   if (task.models.size != 1) {
     title += "s"
+  }
+  // Model count.
+  val modelCount by remember {
+    derivedStateOf {
+      val trigger = task.updateTrigger.value
+      if (trigger >= 0) {
+        task.models.size
+      } else {
+        -1
+      }
+    }
+  }
+
+  // Navigate up when there are no models left.
+  LaunchedEffect(modelCount) {
+    if (modelCount == 0) {
+      navigateUp()
+    }
   }
 
   // Handle system's edge swipe.

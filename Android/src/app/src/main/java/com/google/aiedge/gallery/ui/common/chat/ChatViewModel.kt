@@ -34,6 +34,11 @@ data class ChatUiState(
   val inProgress: Boolean = false,
 
   /**
+   * Indicates whether the session is being reset.
+   */
+  val isResettingSession: Boolean = false,
+
+  /**
    * A map of model names to lists of chat messages.
    */
   val messagesByModel: Map<String, MutableList<ChatMessage>> = mapOf(),
@@ -103,6 +108,12 @@ open class ChatViewModel(val task: Task) : ViewModel() {
       newMessages.removeAt(newMessages.size - 1)
     }
     newMessagesByModel[model.name] = newMessages
+    _uiState.update { _uiState.value.copy(messagesByModel = newMessagesByModel) }
+  }
+
+  fun clearAllMessages(model: Model) {
+    val newMessagesByModel = _uiState.value.messagesByModel.toMutableMap()
+    newMessagesByModel[model.name] = mutableListOf()
     _uiState.update { _uiState.value.copy(messagesByModel = newMessagesByModel) }
   }
 
@@ -187,6 +198,10 @@ open class ChatViewModel(val task: Task) : ViewModel() {
 
   fun setInProgress(inProgress: Boolean) {
     _uiState.update { _uiState.value.copy(inProgress = inProgress) }
+  }
+
+  fun setIsResettingSession(isResettingSession: Boolean) {
+    _uiState.update { _uiState.value.copy(isResettingSession = isResettingSession) }
   }
 
   fun addConfigChangedMessage(

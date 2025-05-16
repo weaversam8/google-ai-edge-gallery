@@ -38,6 +38,7 @@ import com.google.aiedge.gallery.data.ModelDownloadStatus
 import com.google.aiedge.gallery.data.ModelDownloadStatusType
 import com.google.aiedge.gallery.data.TASKS
 import com.google.aiedge.gallery.data.TASK_LLM_CHAT
+import com.google.aiedge.gallery.data.TASK_LLM_IMAGE_TO_TEXT
 import com.google.aiedge.gallery.data.TASK_LLM_USECASES
 import com.google.aiedge.gallery.data.Task
 import com.google.aiedge.gallery.data.TaskType
@@ -58,6 +59,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationRequest
@@ -229,7 +231,10 @@ open class ModelManagerViewModel(
       }
       dataStoreRepository.saveImportedModels(importedModels = importedModels)
     }
-    val newUiState = uiState.value.copy(modelDownloadStatus = curModelDownloadStatus)
+    val newUiState = uiState.value.copy(
+      modelDownloadStatus = curModelDownloadStatus,
+      tasks = uiState.value.tasks.toList()
+    )
     _uiState.update { newUiState }
   }
 
@@ -312,6 +317,12 @@ open class ModelManagerViewModel(
           onDone = onDone,
         )
 
+        TaskType.LLM_IMAGE_TO_TEXT -> LlmChatModelHelper.initialize(
+          context = context,
+          model = model,
+          onDone = onDone,
+        )
+
         TaskType.IMAGE_GENERATION -> ImageGenerationModelHelper.initialize(
           context = context, model = model, onDone = onDone
         )
@@ -331,6 +342,7 @@ open class ModelManagerViewModel(
         TaskType.IMAGE_CLASSIFICATION -> ImageClassificationModelHelper.cleanUp(model = model)
         TaskType.LLM_CHAT -> LlmChatModelHelper.cleanUp(model = model)
         TaskType.LLM_USECASES -> LlmChatModelHelper.cleanUp(model = model)
+        TaskType.LLM_IMAGE_TO_TEXT -> LlmChatModelHelper.cleanUp(model = model)
         TaskType.IMAGE_GENERATION -> ImageGenerationModelHelper.cleanUp(model = model)
         TaskType.TEST_TASK_1 -> {}
         TaskType.TEST_TASK_2 -> {}
@@ -434,14 +446,16 @@ open class ModelManagerViewModel(
     // Create model.
     val model = createModelFromImportedModelInfo(info = info)
 
-    // Remove duplicated imported model if existed.
-    for (task in listOf(TASK_LLM_CHAT, TASK_LLM_USECASES)) {
+    for (task in listOf(TASK_LLM_CHAT, TASK_LLM_USECASES, TASK_LLM_IMAGE_TO_TEXT)) {
+      // Remove duplicated imported model if existed.
       val modelIndex = task.models.indexOfFirst { info.fileName == it.name && it.imported }
       if (modelIndex >= 0) {
         Log.d(TAG, "duplicated imported model found in task. Removing it first")
         task.models.removeAt(modelIndex)
       }
-      task.models.add(model)
+      if (task == TASK_LLM_IMAGE_TO_TEXT && model.llmSupportImage || task != TASK_LLM_IMAGE_TO_TEXT) {
+        task.models.add(model)
+      }
       task.updateTrigger.value = System.currentTimeMillis()
     }
 
@@ -632,8 +646,7 @@ open class ModelManagerViewModel(
   fun loadModelAllowlist() {
     _uiState.update {
       uiState.value.copy(
-        loadingModelAllowlist = true,
-        loadingModelAllowlistError = ""
+        loadingModelAllowlist = true, loadingModelAllowlistError = ""
       )
     }
 
@@ -662,6 +675,9 @@ open class ModelManagerViewModel(
           }
           if (allowedModel.taskTypes.contains(TASK_LLM_USECASES.type.id)) {
             TASK_LLM_USECASES.models.add(model)
+          }
+          if (allowedModel.taskTypes.contains(TASK_LLM_IMAGE_TO_TEXT.type.id)) {
+            TASK_LLM_IMAGE_TO_TEXT.models.add(model)
           }
         }
 
@@ -717,6 +733,9 @@ open class ModelManagerViewModel(
       // Add to task.
       TASK_LLM_CHAT.models.add(model)
       TASK_LLM_USECASES.models.add(model)
+      if (model.llmSupportImage) {
+        TASK_LLM_IMAGE_TO_TEXT.models.add(model)
+      }
 
       // Update status.
       modelDownloadStatus[model.name] = ModelDownloadStatus(
@@ -731,7 +750,7 @@ open class ModelManagerViewModel(
 
     Log.d(TAG, "model download status: $modelDownloadStatus")
     return ModelManagerUiState(
-      tasks = TASKS,
+      tasks = TASKS.toList(),
       modelDownloadStatus = modelDownloadStatus,
       modelInitializationStatus = modelInstances,
       textInputHistory = textInputHistory,
@@ -763,6 +782,9 @@ open class ModelManagerViewModel(
       ) as Float,
       accelerators = accelerators,
     )
+    val llmSupportImage = convertValueToTargetType(
+      info.defaultValues[ConfigKey.SUPPORT_IMAGE.label] ?: false, ValueType.BOOLEAN
+    ) as Boolean
     val model = Model(
       name = info.fileName,
       url = "",
@@ -770,7 +792,9 @@ open class ModelManagerViewModel(
       sizeInBytes = info.fileSize,
       downloadFileName = "$IMPORTS_DIR/${info.fileName}",
       showBenchmarkButton = false,
+      showRunAgainButton = false,
       imported = true,
+      llmSupportImage = llmSupportImage,
     )
     model.preProcess()
 
@@ -803,6 +827,7 @@ open class ModelManagerViewModel(
     )
   }
 
+  @OptIn(ExperimentalSerializationApi::class)
   private inline fun <reified T> getJsonResponse(url: String): T? {
     try {
       val connection = URL(url).openConnection() as HttpURLConnection
@@ -815,7 +840,12 @@ open class ModelManagerViewModel(
         val response = inputStream.bufferedReader().use { it.readText() }
 
         // Parse JSON using kotlinx.serialization
-        val json = Json { ignoreUnknownKeys = true } // Handle potential extra fields
+        val json = Json {
+          // Handle potential extra fields
+          ignoreUnknownKeys = true
+          allowComments = true
+          allowTrailingComma = true
+        }
         val jsonObj = json.decodeFromString<T>(response)
         return jsonObj
       } else {

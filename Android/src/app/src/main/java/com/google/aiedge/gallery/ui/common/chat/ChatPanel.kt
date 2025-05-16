@@ -109,7 +109,7 @@ fun ChatPanel(
   task: Task,
   selectedModel: Model,
   viewModel: ChatViewModel,
-  onSendMessage: (Model, ChatMessage) -> Unit,
+  onSendMessage: (Model, List<ChatMessage>) -> Unit,
   onRunAgainClicked: (Model, ChatMessage) -> Unit,
   onBenchmarkClicked: (Model, ChatMessage, warmUpIterations: Int, benchmarkIterations: Int) -> Unit,
   navigateUp: () -> Unit,
@@ -280,7 +280,8 @@ fun ChatPanel(
                 task = task,
                 onPromptClicked = { template ->
                   onSendMessage(
-                    selectedModel, ChatMessageText(content = template.prompt, side = ChatSide.USER)
+                    selectedModel,
+                    listOf(ChatMessageText(content = template.prompt, side = ChatSide.USER))
                   )
                 })
 
@@ -430,12 +431,15 @@ fun ChatPanel(
     // Chat input
     when (chatInputType) {
       ChatInputType.TEXT -> {
-        val isLlmTask = task.type == TaskType.LLM_CHAT
-        val notLlmStartScreen = !(messages.size == 1 && messages[0] is ChatMessagePromptTemplates)
+//        val isLlmTask = task.type == TaskType.LLM_CHAT
+//        val notLlmStartScreen = !(messages.size == 1 && messages[0] is ChatMessagePromptTemplates)
+        val hasImageMessage = messages.any { it is ChatMessageImage }
         MessageInputText(
           modelManagerViewModel = modelManagerViewModel,
           curMessage = curMessage,
           inProgress = uiState.inProgress,
+          isResettingSession = uiState.isResettingSession,
+          hasImageMessage = hasImageMessage,
           modelInitializing = modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING,
           textFieldPlaceHolderRes = task.textInputPlaceHolderRes,
           onValueChanged = { curMessage = it },
@@ -445,13 +449,17 @@ fun ChatPanel(
           },
           onOpenPromptTemplatesClicked = {
             onSendMessage(
-              selectedModel, ChatMessagePromptTemplates(
-                templates = selectedModel.llmPromptTemplates, showMakeYourOwn = false
+              selectedModel, listOf(
+                ChatMessagePromptTemplates(
+                  templates = selectedModel.llmPromptTemplates, showMakeYourOwn = false
+                )
               )
             )
           },
           onStopButtonClicked = onStopButtonClicked,
-          showPromptTemplatesInMenu = isLlmTask && notLlmStartScreen,
+//          showPromptTemplatesInMenu = isLlmTask && notLlmStartScreen,
+          showPromptTemplatesInMenu = false,
+          showImagePickerInMenu = selectedModel.llmSupportImage == true,
           showStopButtonWhenInProgress = showStopButtonInInputWhenInProgress,
         )
       }
@@ -461,8 +469,10 @@ fun ChatPanel(
         streamingMessage = streamingMessage,
         onImageSelected = { bitmap ->
           onSendMessage(
-            selectedModel, ChatMessageImage(
-              bitmap = bitmap, imageBitMap = bitmap.asImageBitmap(), side = ChatSide.USER
+            selectedModel, listOf(
+              ChatMessageImage(
+                bitmap = bitmap, imageBitMap = bitmap.asImageBitmap(), side = ChatSide.USER
+              )
             )
           )
         },

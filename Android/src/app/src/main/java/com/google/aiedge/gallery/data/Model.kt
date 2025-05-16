@@ -19,7 +19,6 @@ package com.google.aiedge.gallery.data
 import android.content.Context
 import com.google.aiedge.gallery.ui.common.chat.PromptTemplate
 import com.google.aiedge.gallery.ui.common.convertValueToTargetType
-import com.google.aiedge.gallery.ui.llmchat.createLlmChatConfigs
 import java.io.File
 
 data class ModelDataFile(
@@ -90,6 +89,9 @@ data class Model(
 
   /** The prompt templates for the model (only for LLM). */
   val llmPromptTemplates: List<PromptTemplate> = listOf(),
+
+  /** Whether the LLM model supports image input. */
+  val llmSupportImage: Boolean = false,
 
   /** Whether the model is imported or not. */
   val imported: Boolean = false,
@@ -204,6 +206,7 @@ enum class ConfigKey(val label: String) {
   DEFAULT_TOPK("Default TopK"),
   DEFAULT_TOPP("Default TopP"),
   DEFAULT_TEMPERATURE("Default temperature"),
+  SUPPORT_IMAGE("Support image"),
   MAX_RESULT_COUNT("Max result count"),
   USE_GPU("Use GPU"),
   ACCELERATOR("Accelerator"),
@@ -250,83 +253,9 @@ const val IMAGE_CLASSIFICATION_INFO = ""
 
 const val IMAGE_CLASSIFICATION_LEARN_MORE_URL = "https://ai.google.dev/edge/litert/android"
 
-const val LLM_CHAT_INFO =
-  "Some description about this large language model. A community org for developers to discover models that are ready for deployment to edge platforms"
-
 const val IMAGE_GENERATION_INFO =
   "Powered by [MediaPipe Image Generation API](https://ai.google.dev/edge/mediapipe/solutions/vision/image_generator/android)"
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// Model spec.
-
-val MODEL_LLM_GEMMA_2B_GPU_INT4: Model = Model(
-  name = "Gemma 2B (GPU int4)",
-  downloadFileName = "gemma-2b-it-gpu-int4.bin",
-  url = "https://storage.googleapis.com/tfweb/app_gallery_models/gemma-2b-it-gpu-int4.bin",
-  sizeInBytes = 1354301440L,
-  configs = createLlmChatConfigs(
-    accelerators = listOf(Accelerator.GPU)
-  ),
-  showBenchmarkButton = false,
-  info = LLM_CHAT_INFO,
-  learnMoreUrl = "https://huggingface.co/litert-community",
-)
-
-val MODEL_LLM_GEMMA_2_2B_GPU_INT8: Model = Model(
-  name = "Gemma 2 2B (GPU int8)",
-  downloadFileName = "gemma2-2b-it-gpu-int8.bin",
-  url = "https://storage.googleapis.com/tfweb/app_gallery_models/gemma2-2b-it-gpu-int8.bin",
-  sizeInBytes = 2627141632L,
-  configs = createLlmChatConfigs(
-    accelerators = listOf(Accelerator.GPU)
-  ),
-  showBenchmarkButton = false,
-  info = LLM_CHAT_INFO,
-  learnMoreUrl = "https://huggingface.co/litert-community",
-)
-
-val MODEL_LLM_GEMMA_3_1B_INT4: Model = Model(
-  name = "Gemma 3 1B (int4)",
-  downloadFileName = "gemma3-1b-it-int4.task",
-  url = "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.task?download=true",
-  sizeInBytes = 554661243L,
-  configs = createLlmChatConfigs(
-    defaultTopK = 64,
-    defaultTopP = 0.95f,
-    accelerators = listOf(Accelerator.CPU, Accelerator.GPU)
-  ),
-  showBenchmarkButton = false,
-  info = LLM_CHAT_INFO,
-  learnMoreUrl = "https://huggingface.co/litert-community/Gemma3-1B-IT",
-  llmPromptTemplates = listOf(
-    PromptTemplate(
-      title = "Emoji Fun",
-      description = "Generate emojis by emotions",
-      prompt = "Show me emojis grouped by emotions"
-    ),
-    PromptTemplate(
-      title = "Trip Planner",
-      description = "Plan a trip to a destination",
-      prompt = "Plan a two-day trip to San Francisco"
-    ),
-  )
-)
-
-val MODEL_LLM_DEEPSEEK: Model = Model(
-  name = "Deepseek",
-  downloadFileName = "deepseek.task",
-  url = "https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B/resolve/main/deepseek_q8_ekv1280.task?download=true",
-  sizeInBytes = 1860686856L,
-  configs = createLlmChatConfigs(
-    defaultTemperature = 0.6f,
-    defaultTopK = 40,
-    defaultTopP = 0.7f,
-    accelerators = listOf(Accelerator.CPU)
-  ),
-  showBenchmarkButton = false,
-  info = LLM_CHAT_INFO,
-  learnMoreUrl = "https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B",
-)
 
 val MODEL_TEXT_CLASSIFICATION_MOBILEBERT: Model = Model(
   name = "MobileBert",
@@ -412,13 +341,6 @@ val MODELS_TEXT_CLASSIFICATION: MutableList<Model> = mutableListOf(
 val MODELS_IMAGE_CLASSIFICATION: MutableList<Model> = mutableListOf(
   MODEL_IMAGE_CLASSIFICATION_MOBILENET_V1,
   MODEL_IMAGE_CLASSIFICATION_MOBILENET_V2,
-)
-
-val MODELS_LLM: MutableList<Model> = mutableListOf(
-//  MODEL_LLM_GEMMA_2B_GPU_INT4,
-//  MODEL_LLM_GEMMA_2_2B_GPU_INT8,
-  MODEL_LLM_GEMMA_3_1B_INT4,
-  MODEL_LLM_DEEPSEEK,
 )
 
 val MODELS_IMAGE_GENERATION: MutableList<Model> =

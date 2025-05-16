@@ -70,16 +70,18 @@ fun ChatView(
   task: Task,
   viewModel: ChatViewModel,
   modelManagerViewModel: ModelManagerViewModel,
-  onSendMessage: (Model, ChatMessage) -> Unit,
+  onSendMessage: (Model, List<ChatMessage>) -> Unit,
   onRunAgainClicked: (Model, ChatMessage) -> Unit,
   onBenchmarkClicked: (Model, ChatMessage, Int, Int) -> Unit,
   navigateUp: () -> Unit,
   modifier: Modifier = Modifier,
+  onResetSessionClicked: (Model) -> Unit = {},
   onStreamImageMessage: (Model, ChatMessageImage) -> Unit = { _, _ -> },
   onStopButtonClicked: (Model) -> Unit = {},
   chatInputType: ChatInputType = ChatInputType.TEXT,
   showStopButtonInInputWhenInProgress: Boolean = false,
 ) {
+  val uiStat by viewModel.uiState.collectAsState()
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
   val selectedModel = modelManagerUiState.selectedModel
 
@@ -155,6 +157,9 @@ fun ChatView(
       task = task,
       model = selectedModel,
       modelManagerViewModel = modelManagerViewModel,
+      showResetSessionButton = true,
+      isResettingSession = uiStat.isResettingSession,
+      onResetSessionClicked = onResetSessionClicked,
       onConfigChanged = { old, new ->
         viewModel.addConfigChangedMessage(
           oldConfigValues = old,
